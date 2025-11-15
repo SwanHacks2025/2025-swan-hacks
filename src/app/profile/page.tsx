@@ -2,7 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { auth, db } from "@/lib/firebaseClient";
+import { db, auth } from "@/lib/firebaseClient";
+
 import {
   onAuthStateChanged,
   User,
@@ -108,7 +109,6 @@ export default function ProfilePage() {
       {message && (
         <p className="text-sm text-gray-700">{message}</p>
       )}
-      
     </div>
   );
 }
