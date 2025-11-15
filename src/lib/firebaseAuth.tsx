@@ -22,6 +22,9 @@ import {
 
 import { auth, db, googleProvider } from "@/lib/firebaseClient";
 
+import { useRouter } from "next/navigation";
+
+
 type AuthContextType = {
   user: User | null;
   loading: boolean;
@@ -39,6 +42,8 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
 
   // Listen for auth state changes and persist login across refreshes
   useEffect(() => {
@@ -90,7 +95,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // LOGOUT HANDLER
   // ---------------------------------------------------------
   const logout = async () => {
-    await signOut(auth);
+
+    await signOut(auth).then(() => {
+      router.push("/")
+      });     
   };
 
   return (

@@ -129,24 +129,27 @@ export const Navbar = () => {
                 {/* Auth buttons */}
                 {!isSignedIn ? (
                   <>
+                      <Link href="/login">
+
                     <Button
                       size="sm"
                       variant="outline"
                       disabled={loading}
                     >
-                      <Link href="/login">
                       <span>{loading ? "Loading…" : "Login"}</span>
-                      </Link>
                     </Button>
+                      </Link>
+                    
+                      <Link href="/signup">
 
                     <Button 
                       size="sm"
                       disabled={loading}
                     >
-                      <Link href="/signup">
                       <span>Sign Up</span>
-                      </Link>
                     </Button>
+                      </Link>
+              
                     <ThemeToggle />
                     <Button
                       asChild
