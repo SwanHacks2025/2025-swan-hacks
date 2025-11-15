@@ -1,33 +1,37 @@
 import { Badge } from "./ui/badge";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { CommunityEvent } from "@/lib/firebaseEvents";
 
 export function EventCard({
-    category,
+    event
 }: {
-    category: string
+    event: CommunityEvent
 }) {
     return (
       <div>
         <Card className="@container/card">
           <CardHeader>
-            <CardDescription>Total Revenue</CardDescription>
+            <CardDescription>
+              {event.category} Event
+            </CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-                $1,250.00
+                {event.name}
             </CardTitle>
             <CardAction>
               <Badge variant="outline">
-                {category}
+                Attending
               </Badge>
             </CardAction>
           </CardHeader>
           <CardContent>
+            {event.description}
           </CardContent>
           <CardFooter className="flex-col items-start gap-1.5 text-sm">
             <div className="line-clamp-1 flex gap-2 font-medium">
-              Trending up this month
+              {event.date.toDateString()}
             </div>
             <div className="text-muted-foreground">
-              Visitors for the last 6 months
+              {event.location}
             </div>
           </CardFooter>
         </Card>

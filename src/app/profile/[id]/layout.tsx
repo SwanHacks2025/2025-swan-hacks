@@ -6,7 +6,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider
       style={
         {
-          "--sidebar-width": "calc(var(--spacing) * 120)",
+          "--sidebar-width": "calc(var(--spacing) * 130)",
           "--header-height": "calc(var(--spacing) * 12)",
         } as React.CSSProperties
       }
