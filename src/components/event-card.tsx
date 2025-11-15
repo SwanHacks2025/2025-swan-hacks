@@ -1,0 +1,36 @@
+import { Badge } from "./ui/badge";
+import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+
+export function EventCard({
+    category,
+}: {
+    category: string
+}) {
+    return (
+      <div>
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Total Revenue</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                $1,250.00
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                {category}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+          </CardContent>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              Trending up this month
+            </div>
+            <div className="text-muted-foreground">
+              Visitors for the last 6 months
+            </div>
+          </CardFooter>
+        </Card>
+      </div>
+    )
+}
