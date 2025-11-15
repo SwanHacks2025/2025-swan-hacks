@@ -19,7 +19,7 @@ const UserProfile = {
 };
 
 export const Navbar = () => {
-  const isSignedIn = true; // Simple boolean for now
+  const isSignedIn = false; // Simple boolean for now
   const [menuState, setMenuState] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
 

@@ -9,7 +9,10 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+<<<<<<< Updated upstream
 public/cesium
+=======
+>>>>>>> Stashed changes
 package-lock.json
 
 # testing
