@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const menuItems = [
   { name: "Events", href: "#link" },
@@ -146,7 +147,16 @@ export const Navbar = () => {
                       <span>Sign Up</span>
                       </Link>
                     </Button>
-              
+                    <ThemeToggle />
+                    <Button
+                      asChild
+                      size="sm"
+                      className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}
+                    >
+                      <Link href="#">
+                        <span>Get Started</span>
+                      </Link>
+                    </Button>
                   </>
                 ) : (
                   <>
