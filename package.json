@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "postinstall": "node copy-cesium.js",
+    "postinstall": "node copy-cesium.js",
     "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
@@ -11,14 +12,19 @@
   },
   "dependencies": {
     "@radix-ui/react-navigation-menu": "^1.2.14",
+    "@radix-ui/react-navigation-menu": "^1.2.14",
     "@radix-ui/react-slot": "^1.2.4",
+    "cesium": "^1.135.0",
     "cesium": "^1.135.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.6.0",
+    "firebase-admin": "^13.6.0",
     "lucide-react": "^0.553.0",
     "next": "16.0.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "resium": "^1.19.1",
     "resium": "^1.19.1",
     "tailwind-merge": "^3.4.0"
   },
