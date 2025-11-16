@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { CesiumMapRef } from '@/components/CesiumMap';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { getCommunityEvent } from '@/lib/firebaseEvents';
 
 const CesiumMap = dynamic(() => import('@/components/CesiumMap'), {
   ssr: false,
@@ -69,24 +70,16 @@ function MapPageContent() {
       // Fetch event from Firestore
       const fetchEvent = async () => {
         try {
-          const eventRef = doc(db, 'Events', eventId);
-          const eventSnap = await getDoc(eventRef);
-          if (eventSnap.exists()) {
-            const eventData = { id: eventSnap.id, ...eventSnap.data() };
-
+          const eventData = await getCommunityEvent(eventId);
+          if (eventData) {
             console.log('Fetched event data:', eventData);
-            console.log(
-              'Event lat:',
-              (eventData as any).lat,
-              'long:',
-              (eventData as any).long
-            );
+            console.log('Event lat:', eventData.lat, 'long:', eventData.long);
 
             // Set initial position for map to use (using correct field names: lat and long)
-            if ((eventData as any).lat && (eventData as any).long) {
+            if (eventData.lat && eventData.long) {
               const newPosition = {
-                lat: (eventData as any).lat,
-                lon: (eventData as any).long,
+                lat: eventData.lat,
+                lon: eventData.long,
               };
               console.log('Setting initialPosition to:', newPosition);
               setInitialPosition(newPosition);

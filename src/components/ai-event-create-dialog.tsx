@@ -32,8 +32,9 @@ import {
 } from '@/lib/firebaseEvents';
 import { auth, db } from '@/lib/firebaseClient';
 import { onAuthStateChanged, User } from '@firebase/auth';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { GeminiEventResult } from '@/app/api/gemini/search/route';
+import { toast } from 'sonner';
 
 type NominatimResult = {
   display_name: string;
@@ -249,6 +250,14 @@ export function AIEventCreateDialog({
       doc(db, 'Events', event.id).withConverter(communityEventConverter),
       event
     );
+
+    // Add event to user's createdEvents array
+    const userRef = doc(db, 'Users', user.uid);
+    await updateDoc(userRef, {
+      createdEvents: arrayUnion(event.id),
+    });
+
+    toast.success('Event created successfully!');
 
     // Close dialog and reset form
     onOpenChange(false);

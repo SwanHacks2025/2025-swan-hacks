@@ -48,8 +48,11 @@ import {
   getDoc,
   getFirestore,
   setDoc,
+  updateDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 import { redirect, RedirectType } from 'next/navigation';
+import { toast } from 'sonner';
 
 type NominatimResult = {
   display_name: string;
@@ -170,7 +173,7 @@ export function EventDialog() {
     const image = form.get('image')!.toString();
 
     if (!eventDate) {
-      alert('Please select a date');
+      toast.error('Please select a date');
       return;
     }
 
@@ -210,6 +213,13 @@ export function EventDialog() {
       event
     );
 
+    // Add event to user's createdEvents array
+    const userRef = doc(db, 'Users', user.uid);
+    await updateDoc(userRef, {
+      createdEvents: arrayUnion(event.id),
+    });
+
+    toast.success('Event created successfully!');
     window.location.reload();
   };
 
@@ -398,6 +408,58 @@ export function EventDialog() {
             {/* Hidden lat/lon fields */}
             <input type="hidden" name="lat" value={lat} />
             <input type="hidden" name="lon" value={lon} />
+
+            {/* Tags */}
+            <div className="grid gap-2">
+              <Label>Tags (optional)</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={newTag}
+                  onChange={(e) => setNewTag(e.target.value)}
+                  placeholder="Add a tag..."
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (newTag.trim() && !tags.includes(newTag.trim())) {
+                        setTags([...tags, newTag.trim()]);
+                        setNewTag('');
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    if (newTag.trim() && !tags.includes(newTag.trim())) {
+                      setTags([...tags, newTag.trim()]);
+                      setNewTag('');
+                    }
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-1 bg-muted px-2 py-1 rounded-md text-sm"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
+                        className="hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Image URL */}
             <div className="grid gap-2">
