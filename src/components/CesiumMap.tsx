@@ -8,10 +8,36 @@ import {
     Viewer as CesiumViewer,
     createWorldTerrainAsync,
     createGooglePhotorealistic3DTileset,
-    Cartesian3, Transforms, HeadingPitchRoll,
+    Cartesian3,
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import * as Cesium from "cesium";
+
+export async function createCircularImage(url: string, size = 128): Promise<HTMLCanvasElement> {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d")!;
+
+            // Draw circle mask
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+
+            // Draw image inside the clipped circle
+            ctx.drawImage(img, 0, 0, size, size);
+
+            resolve(canvas);
+        };
+        img.src = url;
+    });
+}
+
 
 export default function CesiumMap() {
     const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -55,6 +81,7 @@ export default function CesiumMap() {
                 console.log("Terrain loaded");
                 setStatus("Terrain loaded");
 
+                viewer.scene.globe.depthTestAgainstTerrain = true;
 
                 // Load Google 3D Tiles
                 if (GOOGLE_KEY) {
@@ -78,17 +105,6 @@ export default function CesiumMap() {
                                 duration: 2,
                             });
                         }, 1000);
-
-                        viewer.entities.add({
-                            name: "Drone Strike Target",
-                            position: Cartesian3.fromDegrees(-93.646072, 42.025421, 300),
-                            orientation: Transforms.headingPitchRollQuaternion(Cartesian3.fromDegrees(-93.646072, 42.025421, 300), new HeadingPitchRoll(0,Cesium.Math.toRadians(-90), 0)),
-                            model: {
-                                uri: "/models/VolunteeringMarker.glb",
-                                scale: 10,
-                                minimumPixelSize: 32,
-                            }
-                        });
                     } catch (googleError: any) {
                         console.error("Google 3D Tiles error:", googleError);
                         setStatus(`Google error: ${googleError.message}`);
@@ -109,6 +125,97 @@ export default function CesiumMap() {
 
         return () => clearTimeout(timer);
     }, [GOOGLE_KEY]);
+
+    useEffect(() => {
+        const fetchMarkers = async () => {
+            const res = await fetch("/mock-markers.json");
+            const markers = await res.json();
+            //const circleImage = await createCircularImage("/dude.jpg", 128);
+
+            const viewer = viewerRef.current?.cesiumElement;
+            if (!viewer) return;
+
+            // 1. Add all markers
+            markers.forEach((marker) => {
+                const pos = Cesium.Cartesian3.fromDegrees(
+                    marker.longitude,
+                    marker.latitude,
+                    marker.height
+                );
+
+                viewer.entities.add({
+                    id: marker.id,
+                    name: marker.name,
+                    position: pos,
+                    _pos: pos,  // custom field for rotation logic
+                    model: {
+                        uri: marker.modelUri,
+                        scale: 1,
+                        minimumPixelSize: 32,
+                    },
+                    billboard: {
+                        image: createCircularImage(marker.imageUri, 128),
+                        disableDepthTestDistance: 0,
+                        enableDepthTest: true,
+                        eyeOffset: new Cesium.Cartesian3(0, 0, 0),
+
+                        scale: 0.5,
+                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        pixelOffset: new Cesium.Cartesian2(0, -40),  // move image above the model
+
+                        scaleByDistance: undefined,
+                        pixelOffsetScaleByDistance: undefined,
+                    }
+                });
+            });
+
+            // 2. Add global rotation handler (only once)
+            viewer.scene.postRender.addEventListener(() => {
+
+                const camera = viewer.camera;
+
+                const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(camera.position);
+                const height = carto.height;
+
+                const minHeight = 500;
+                const maxHeight = 30000;
+
+                if (height < minHeight) {
+                    carto.height = minHeight;
+                    camera.position = Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+                } else if (height > maxHeight) {
+                    carto.height = maxHeight;
+                    camera.position = Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+                }
+
+
+                const cameraPos = viewer.camera.positionWC;
+
+                viewer.entities.values.forEach(entity => {
+                    if (!entity._pos) return;
+
+                    const pos = entity._pos;
+
+                    const toCamera = Cesium.Cartesian3.subtract(
+                        cameraPos, pos, new Cesium.Cartesian3()
+                    );
+
+                    toCamera.z = 0; // horizontal rotation only
+                    Cesium.Cartesian3.normalize(toCamera, toCamera);
+
+                    const heading = Math.atan2(toCamera.x, toCamera.y);
+
+                    entity.orientation = Cesium.Transforms.headingPitchRollQuaternion(
+                        pos,
+                        new Cesium.HeadingPitchRoll(heading, 0, 0)
+                    );
+                });
+            });
+        };
+        fetchMarkers();
+    }, []);
+
+
 
     if (!ION_TOKEN) {
         return (

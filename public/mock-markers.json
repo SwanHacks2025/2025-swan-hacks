@@ -1,0 +1,272 @@
+[
+  {
+    "id": 1,
+    "name": "Marker A",
+    "longitude": -93.646672,
+    "latitude": 42.025521,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 2,
+    "name": "Marker B",
+    "longitude": -93.65242,
+    "latitude": 42.03,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 3,
+    "name": "Marker C",
+    "longitude": -93.646072,
+    "latitude": 42.025421,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 4,
+    "name": "Marker D",
+    "longitude": -93.643072,
+    "latitude": 42.015421,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 5,
+    "name": "Marker E",
+    "longitude": -93.65012,
+    "latitude": 42.0289,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude5.jpg"
+  },
+  {
+    "id": 6,
+    "name": "Marker F",
+    "longitude": -93.6485,
+    "latitude": 42.0261,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 7,
+    "name": "Marker G",
+    "longitude": -93.6445,
+    "latitude": 42.0245,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 8,
+    "name": "Marker H",
+    "longitude": -93.655,
+    "latitude": 42.032,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 9,
+    "name": "Marker I",
+    "longitude": -93.647,
+    "latitude": 42.020,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 10,
+    "name": "Marker J",
+    "longitude": -93.642,
+    "latitude": 42.018,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude5.jpg"
+  },
+  {
+    "id": 11,
+    "name": "Marker K",
+    "longitude": -93.649,
+    "latitude": 42.027,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 12,
+    "name": "Marker L",
+    "longitude": -93.653,
+    "latitude": 42.029,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 13,
+    "name": "Marker M",
+    "longitude": -93.641,
+    "latitude": 42.023,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 14,
+    "name": "Marker N",
+    "longitude": -93.651,
+    "latitude": 42.021,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 15,
+    "name": "Marker O",
+    "longitude": -93.646,
+    "latitude": 42.019,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude5.jpg"
+  },
+  {
+    "id": 16,
+    "name": "Marker P",
+    "longitude": -93.644,
+    "latitude": 42.022,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 17,
+    "name": "Marker Q",
+    "longitude": -93.654,
+    "latitude": 42.031,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 18,
+    "name": "Marker R",
+    "longitude": -93.647,
+    "latitude": 42.023,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 19,
+    "name": "Marker S",
+    "longitude": -93.643,
+    "latitude": 42.021,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 20,
+    "name": "Marker T",
+    "longitude": -93.648,
+    "latitude": 42.025,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude5.jpg"
+  },
+  {
+    "id": 21,
+    "name": "Marker U",
+    "longitude": -93.652,
+    "latitude": 42.027,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 22,
+    "name": "Marker V",
+    "longitude": -93.645,
+    "latitude": 42.024,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 23,
+    "name": "Marker W",
+    "longitude": -93.650,
+    "latitude": 42.026,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 24,
+    "name": "Marker X",
+    "longitude": -93.649,
+    "latitude": 42.024,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 25,
+    "name": "Marker Y",
+    "longitude": -93.644,
+    "latitude": 42.02,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude5.jpg"
+  },
+  {
+    "id": 26,
+    "name": "Marker Z",
+    "longitude": -93.651,
+    "latitude": 42.023,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude.jpg"
+  },
+  {
+    "id": 27,
+    "name": "Marker AA",
+    "longitude": -93.646,
+    "latitude": 42.022,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude2.jpg"
+  },
+  {
+    "id": 28,
+    "name": "Marker BB",
+    "longitude": -93.642,
+    "latitude": 42.02,
+    "height": 290,
+    "modelUri": "/models/VolunteeringMarker.glb",
+    "imageUri": "/dude3.jpg"
+  },
+  {
+    "id": 29,
+    "name": "Marker CC",
+    "longitude": -93.653,
+    "latitude": 42.025,
+    "height": 290,
+    "modelUri": "/models/SportsMarker.glb",
+    "imageUri": "/dude4.jpg"
+  },
+  {
+    "id": 30,
+    "name": "Marker DD",
+    "longitude": -93.648,
+    "latitude": 42.022,
+    "height": 290,
+    "modelUri": "/models/TutoringMarker.glb",
+    "imageUri": "/dude5.jpg"
+  }
+]
