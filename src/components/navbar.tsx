@@ -93,13 +93,13 @@ export const Navbar = () => {
     <header>
       <nav
         data-state={menuState && 'active'}
-        className="fixed left-0 w-full z-20 px-2"
+        className="fixed left-0 w-full z-20 px-2 mt-2"
       >
         <div
           className={cn(
-            'mx-auto max-w-6xl px-6 transition-all duration-300 lg:px-12',
+            'mx-auto max-w-7xl px-6 transition-all duration-300 lg:px-12',
             isFloating &&
-              'bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg mt-2 lg:px-5'
+              'bg-background/70 max-w-6xl rounded-2xl border border-border backdrop-blur-xl mt-2 lg:px-5 shadow-lg'
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2">
@@ -108,7 +108,7 @@ export const Navbar = () => {
               <Link
                 href="/"
                 aria-label="home"
-                className="flex gap-2 items-center"
+                className="flex gap-2 items-center hover:opacity-90 transition-opacity"
               >
                 <Image
                   src="/GatherPointLogo.svg"
@@ -116,7 +116,7 @@ export const Navbar = () => {
                   width={48}
                   height={48}
                 />
-                <p className="font-semibold text-xl tracking-tighter">
+                <p className="font-semibold text-xl tracking-tighter text-foreground">
                   Gather Point
                 </p>
               </Link>
@@ -124,7 +124,7 @@ export const Navbar = () => {
               <button
                 onClick={() => setMenuState(!menuState)}
                 aria-label={menuState ? 'Close Menu' : 'Open Menu'}
-                className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden"
+                className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden text-foreground"
               >
                 <Equal className="in-data-[state=active]:rotate-180 in-data-[state=active]:scale-0 in-data-[state=active]:opacity-0 m-auto size-6 duration-200" />
                 <X className="in-data-[state=active]:rotate-0 in-data-[state=active]:scale-100 in-data-[state=active]:opacity-100 absolute inset-0 m-auto size-6 -rotate-180 scale-0 opacity-0 duration-200" />
@@ -134,14 +134,19 @@ export const Navbar = () => {
             {/* Center menu (desktop) only if signed in */}
             {isSignedIn && (
               <div className="absolute inset-0 m-auto hidden size-fit lg:block">
-                <ul className="flex gap-8 text-sm">
+                <ul className="flex gap-6">
                   {menuItems.map((item, index) => (
                     <li key={index}>
                       <Link
                         href={item.href}
-                        className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                        className={cn(
+                          'px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold',
+                          pathname === item.href
+                            ? 'text-primary bg-primary/15 shadow-sm'
+                            : 'text-foreground/80 hover:text-primary hover:bg-primary/8'
+                        )}
                       >
-                        <span>{item.name}</span>
+                        {item.name}
                       </Link>
                     </li>
                   ))}
@@ -153,14 +158,19 @@ export const Navbar = () => {
             <div className="bg-background in-data-[state=active]:block lg:in-data-[state=active]:flex mb-6 hidden w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
               {isSignedIn && (
                 <div className="lg:hidden">
-                  <ul className="space-y-6 text-base">
+                  <ul className="space-y-2">
                     {menuItems.map((item, index) => (
                       <li key={index}>
                         <Link
                           href={item.href}
-                          className="text-muted-foreground hover:text-accent-foreground block duration-150"
+                          className={cn(
+                            'block px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold',
+                            pathname === item.href
+                              ? 'text-primary bg-primary/15 shadow-sm'
+                              : 'text-foreground/80 hover:text-primary hover:bg-primary/8'
+                          )}
                         >
-                          <span>{item.name}</span>
+                          {item.name}
                         </Link>
                       </li>
                     ))}
@@ -189,10 +199,10 @@ export const Navbar = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          className="flex items-center gap-2 rounded-lg p-2 hover:bg-primary/10 transition-colors"
+                          className="inline-flex items-center justify-center gap-2 h-8 px-2 py-1 rounded-md hover:bg-primary/10 transition-colors cursor-pointer"
                           aria-label="Open user menu"
                         >
-                          <Avatar>
+                          <Avatar className="h-6 w-6">
                             {avatarUrl && (
                               <AvatarImage
                                 key={avatarUrl} // 🔑 force re-mount when URL changes
@@ -204,7 +214,7 @@ export const Navbar = () => {
                             </AvatarFallback>
                           </Avatar>
 
-                          <span className="text-sm font-medium hidden sm:inline lg:inline">
+                          <span className="text-sm font-medium hidden sm:inline">
                             {displayName}
                           </span>
                         </button>
@@ -215,16 +225,21 @@ export const Navbar = () => {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                          <Link href="/profile">Profile</Link>
+                          <Link href="/profile" className="cursor-pointer">
+                            Profile
+                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={logout}
                           className="cursor-pointer"
                         >
-                          <Link href="/">Sign out</Link>
+                          <Link href="/" className="cursor-pointer">
+                            Sign out
+                          </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    <ThemeToggle />
                   </>
                 )}
               </div>
