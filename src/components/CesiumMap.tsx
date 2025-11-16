@@ -13,7 +13,16 @@ import {
 } from "cesium";
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import * as Cesium from "cesium";
-import {debug} from "node:util";
+import { Button } from "@/components/ui/button";
+import { Home, Filter } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 export async function createCircularImage(
     url: string,
@@ -39,7 +48,6 @@ export async function createCircularImage(
             ctx.drawImage(img, 0, 0, size, size);
             ctx.restore();
 
-            // optional soft edge alpha tweak (keeps border smooth)
             const imageData = ctx.getImageData(0, 0, size, size);
             const data = imageData.data;
             const centerX = size / 2;
@@ -67,7 +75,6 @@ export async function createCircularImage(
             resolve(canvas);
         };
         img.onerror = () => {
-            // fallback: return an empty canvas so billboard creation won't crash
             const canvas = document.createElement("canvas");
             canvas.width = size;
             canvas.height = size;
@@ -81,6 +88,16 @@ interface CesiumMapProps {
     onMarkerClick?: (markerId: string, markerData: any) => void;
 }
 
+// Initial camera position
+const INITIAL_POSITION = {
+    lon: -93.647072,
+    lat: 42.015421,
+    height: 1000,
+    heading: 0,
+    pitch: -45,
+    roll: 0,
+};
+
 export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
     const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
@@ -89,13 +106,13 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
     const [isLoading, setIsLoading] = useState(true);
     const [loadingProgress, setLoadingProgress] = useState(0);
     const [loadingMessage, setLoadingMessage] = useState("Initializing map...");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [allCategories, setAllCategories] = useState<string[]>([]);
 
-    // prevent duplicate marker loads
     const markersLoadedRef = useRef(false);
-
-    // keep references to cleanup listener objects
     const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
     const postRenderListenerRef = useRef<(() => void) | null>(null);
+    const viewerReadyRef = useRef(false);
 
     useEffect(() => {
         if (ION_TOKEN) {
@@ -108,11 +125,10 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
             if (!viewerRef.current?.cesiumElement) return;
             const viewer = viewerRef.current.cesiumElement;
 
-            // hide Cesium credit
             try {
                 viewer.cesiumWidget.creditContainer.style.display = "none";
             } catch (e) {
-                // ignore if not available yet
+                // ignore
             }
 
             try {
@@ -120,7 +136,11 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 setLoadingProgress(20);
 
                 viewer.camera.setView({
-                    destination: Cartesian3.fromDegrees(-93.647072, 42.015421, 1000),
+                    destination: Cartesian3.fromDegrees(
+                        INITIAL_POSITION.lon,
+                        INITIAL_POSITION.lat,
+                        INITIAL_POSITION.height
+                    ),
                 });
 
                 setLoadingMessage("Loading terrain...");
@@ -131,7 +151,6 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 viewer.scene.globe.depthTestAgainstTerrain = true;
                 viewer.scene.globe.enableLighting = false;
 
-                // CartoDB labels layer (CORS-friendly)
                 viewer.imageryLayers.addImageryProvider(
                     new Cesium.UrlTemplateImageryProvider({
                         url: "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png",
@@ -152,11 +171,15 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
                         setTimeout(() => {
                             viewer.camera.flyTo({
-                                destination: Cartesian3.fromDegrees(-93.647072, 42.015421, 1000),
+                                destination: Cartesian3.fromDegrees(
+                                    INITIAL_POSITION.lon,
+                                    INITIAL_POSITION.lat,
+                                    INITIAL_POSITION.height
+                                ),
                                 orientation: {
-                                    heading: Cesium.Math.toRadians(0),
-                                    pitch: Cesium.Math.toRadians(-45),
-                                    roll: Cesium.Math.toRadians(0),
+                                    heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+                                    pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+                                    roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
                                 },
                                 duration: 2,
                             });
@@ -178,60 +201,7 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         return () => clearTimeout(timer);
     }, [GOOGLE_KEY]);
 
-    // Separate useEffect for click handler that updates when onMarkerClick changes
     useEffect(() => {
-        console.log("Setting up click handler, onMarkerClick:", !!onMarkerClick);
-
-        const viewer = viewerRef.current?.cesiumElement;
-        if (!viewer) {
-            console.log("Viewer not ready for click handler");
-            return;
-        }
-
-        // Clean up old handler
-        if (clickHandlerRef.current) {
-            console.log("Destroying old click handler");
-            clickHandlerRef.current.destroy();
-        }
-
-        // Create new handler with current onMarkerClick
-        console.log("Creating new click handler");
-        clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-        clickHandlerRef.current.setInputAction((click: any) => {
-            console.log("Click detected on canvas");
-            const pickedObject = viewer.scene.pick(click.position);
-            console.log("Picked object:", pickedObject);
-
-            if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
-                const entity = pickedObject.id as any;
-                console.log("Entity clicked:", entity.id, entity._markerData);
-                console.log("onMarkerClick exists?", !!onMarkerClick);
-
-                if (onMarkerClick && entity._markerData) {
-                    console.log("Calling onMarkerClick with:", entity.id, entity._markerData);
-                    onMarkerClick(entity.id, entity._markerData);
-                } else {
-                    console.log("NOT calling onMarkerClick - callback:", !!onMarkerClick, "data:", !!entity._markerData);
-                }
-            } else {
-                console.log("No entity picked");
-            }
-        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-        // Cleanup on unmount or when onMarkerClick changes
-        return () => {
-            console.log("Cleaning up click handler");
-            if (clickHandlerRef.current) {
-                clickHandlerRef.current.destroy();
-                clickHandlerRef.current = null;
-            }
-        };
-    }, [onMarkerClick]); // Re-create handler when callback changes
-
-    const viewerReadyRef = useRef(false);
-
-    useEffect(() => {
-        // Fetch events one-time from Firestore and create Cesium entities
         let mounted = true;
 
         const loadMarkersFromFirestore = async () => {
@@ -241,21 +211,18 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 return;
             }
 
-            // prevent duplicates
             if (markersLoadedRef.current) {
                 return;
             }
 
             markersLoadedRef.current = true;
 
-            // fetch your typed events
             let events: CommunityEvent[] = [];
             try {
                 events = await fetchCommunityEvents();
                 console.log("Fetched events:", events);
             } catch (err) {
                 console.error("Error fetching community events:", err);
-                // Still complete loading even if fetch fails
                 setLoadingProgress(100);
                 setLoadingMessage("Complete!");
                 setTimeout(() => setIsLoading(false), 1200);
@@ -264,23 +231,27 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
             if (!mounted) return;
 
+            // Extract unique categories
+            const categories = Array.from(
+                new Set(events.map((e) => e.category).filter(Boolean))
+            ) as string[];
+            setAllCategories(categories);
+            setSelectedCategories(categories); // Initially show all
+
             // build entities
             for (const evt of events) {
-                console.log(evt);
-                // Use long / lat naming from your CommunityEvent
                 const lng = (evt as any).long ?? (evt as any).longitude ?? 0;
                 const lat = (evt as any).lat ?? (evt as any).latitude ?? 0;
-                const height = 290; // constant as requested
+                const height = 290;
 
                 const pos = Cesium.Cartesian3.fromDegrees(lng, lat, height);
 
-                // create circular image (await => ensures proper depth testing)
                 let circleImage: HTMLCanvasElement | string = "/file.svg";
                 if (evt.imageUri) {
                     try {
                         circleImage = await createCircularImage(evt.imageUri, 128);
                     } catch (err) {
-                        console.warn("Failed to create circular image, falling back to raw URI", err);
+                        console.warn("Failed to create circular image", err);
                         circleImage = evt.imageUri;
                     }
                 }
@@ -307,12 +278,11 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                     },
                 });
 
-                // attach custom properties for rotation and selection
                 (entity as any)._pos = pos;
                 (entity as any)._markerData = evt;
+                (entity as any)._category = evt.category;
             }
 
-            // add postRender rotation + zoom clamp if not already added
             if (!postRenderListenerRef.current) {
                 const fn = () => {
                     const camera = viewer.camera;
@@ -360,83 +330,65 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 postRenderListenerRef.current = fn;
             }
 
-            // Mark viewer as ready
             viewerReadyRef.current = true;
             console.log("Viewer is now ready, markers loaded");
 
-            // IMPORTANT: Complete the loading sequence
             setLoadingProgress(100);
             setLoadingMessage("Complete!");
             setTimeout(() => setIsLoading(false), 1200);
         };
 
-        // Start loading with a delay to ensure viewer is ready
         const timer = setTimeout(loadMarkersFromFirestore, 1000);
 
         return () => {
             mounted = false;
             clearTimeout(timer);
 
-            // cleanup postRender listener
             const viewer = viewerRef.current?.cesiumElement;
             if (postRenderListenerRef.current && viewer) {
                 viewer.scene.postRender.removeEventListener(postRenderListenerRef.current);
                 postRenderListenerRef.current = null;
             }
         };
-    }, []); // Empty dependency array - only load markers once
+    }, []);
 
-// Separate useEffect for click handler that updates when onMarkerClick changes
+    // Apply filter when selectedCategories changes
     useEffect(() => {
-        console.log("Setting up click handler, onMarkerClick:", !!onMarkerClick);
-        console.log("Viewer ready?", viewerReadyRef.current);
+        const viewer = viewerRef.current?.cesiumElement;
+        if (!viewer || !viewerReadyRef.current) return;
 
+        viewer.entities.values.forEach((entity) => {
+            const entityWithCategory = entity as any;
+            const category = entityWithCategory._category;
+
+            entity.show = selectedCategories.length === 0 || selectedCategories.includes(category);
+        });
+    }, [selectedCategories]);
+
+    // Single click handler useEffect
+    useEffect(() => {
         const viewer = viewerRef.current?.cesiumElement;
         if (!viewer || !viewerReadyRef.current) {
-            console.log("Viewer not ready for click handler, will retry...");
-            // Retry after a delay if viewer isn't ready
-            const retryTimer = setTimeout(() => {
-                if (viewerRef.current?.cesiumElement && viewerReadyRef.current) {
-                    // Trigger re-run by forcing a state update
-                    console.log("Retrying click handler setup");
-                }
-            }, 2000);
-            return () => clearTimeout(retryTimer);
+            return;
         }
 
-        // Clean up old handler
         if (clickHandlerRef.current) {
-            console.log("Destroying old click handler");
             clickHandlerRef.current.destroy();
         }
 
-        // Create new handler with current onMarkerClick
-        console.log("Creating new click handler");
         clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
         clickHandlerRef.current.setInputAction((click: any) => {
-            console.log("Click detected on canvas");
             const pickedObject = viewer.scene.pick(click.position);
-            console.log("Picked object:", pickedObject);
 
             if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
                 const entity = pickedObject.id as any;
-                console.log("Entity clicked:", entity.id, entity._markerData);
-                console.log("onMarkerClick exists?", !!onMarkerClick);
-
                 if (onMarkerClick && entity._markerData) {
-                    console.log("Calling onMarkerClick with:", entity.id, entity._markerData);
                     onMarkerClick(entity.id, entity._markerData);
-                } else {
-                    console.log("NOT calling onMarkerClick - callback:", !!onMarkerClick, "data:", !!entity._markerData);
                 }
-            } else {
-                console.log("No entity picked");
             }
         }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-        // Cleanup on unmount or when onMarkerClick changes
         return () => {
-            console.log("Cleaning up click handler");
             if (clickHandlerRef.current) {
                 clickHandlerRef.current.destroy();
                 clickHandlerRef.current = null;
@@ -444,38 +396,40 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         };
     }, [onMarkerClick, viewerReadyRef.current]);
 
-// Separate useEffect for click handler that updates when onMarkerClick changes
-    useEffect(() => {
+    const handleResetView = () => {
         const viewer = viewerRef.current?.cesiumElement;
         if (!viewer) return;
 
-        // Clean up old handler
-        if (clickHandlerRef.current) {
-            clickHandlerRef.current.destroy();
+        viewer.camera.flyTo({
+            destination: Cartesian3.fromDegrees(
+                INITIAL_POSITION.lon,
+                INITIAL_POSITION.lat,
+                INITIAL_POSITION.height
+            ),
+            orientation: {
+                heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+                pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+                roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
+            },
+            duration: 2,
+        });
+    };
+
+    const toggleCategory = (category: string) => {
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category]
+        );
+    };
+
+    const toggleAllCategories = () => {
+        if (selectedCategories.length === allCategories.length) {
+            setSelectedCategories([]);
+        } else {
+            setSelectedCategories(allCategories);
         }
-
-        // Create new handler with current onMarkerClick
-        clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-        clickHandlerRef.current.setInputAction((click: any) => {
-            const pickedObject = viewer.scene.pick(click.position);
-
-            if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
-                const entity = pickedObject.id as any;
-                console.log("Entity clicked:", entity.id, entity._markerData);
-                if (onMarkerClick && entity._markerData) {
-                    onMarkerClick(entity.id, entity._markerData);
-                }
-            }
-        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-        // Cleanup on unmount or when onMarkerClick changes
-        return () => {
-            if (clickHandlerRef.current) {
-                clickHandlerRef.current.destroy();
-                clickHandlerRef.current = null;
-            }
-        };
-    }, [onMarkerClick]); // Re-create handler when callback changes
+    };
 
     if (!ION_TOKEN) {
         return (
@@ -488,6 +442,55 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
     return (
         <div style={{ width: "100%", height: "100%", position: "relative" }}>
+            {/* Control Buttons */}
+            <div className="absolute top-4 left-4 z-50 flex gap-2">
+                <Button
+                    onClick={handleResetView}
+                    variant="outline"
+                    size="sm"
+                    className="bg-background/80 backdrop-blur-sm"
+                >
+                    <Home className="h-4 w-4 mr-2" />
+                    Reset View
+                </Button>
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-background/80 backdrop-blur-sm"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filter ({selectedCategories.length}/{allCategories.length})
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                        <DropdownMenuCheckboxItem
+                            checked={selectedCategories.length === allCategories.length}
+                            onCheckedChange={toggleAllCategories}
+                        >
+                            <span className="font-semibold">All Categories</span>
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        {allCategories.map((category) => (
+                            <DropdownMenuCheckboxItem
+                                key={category}
+                                checked={selectedCategories.includes(category)}
+                                onCheckedChange={() => toggleCategory(category)}
+                            >
+                                {category}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                        {allCategories.length === 0 && (
+                            <DropdownMenuItem disabled>
+                                No categories found
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
+
             {/* Loading Screen Overlay */}
             {isLoading && (
                 <div
