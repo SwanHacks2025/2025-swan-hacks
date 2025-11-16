@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { SpotlightBackground } from '@/components/spotlight-background';
 import { Footer } from '@/components/footer';
 import { ArrowRight, Users, Calendar, Sparkles, MapPin } from 'lucide-react';
+import { useAuthModal } from '@/context/AuthModalContext';
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -56,6 +57,8 @@ const features = [
 // ];
 
 export default function Home() {
+  const { openSignupModal } = useAuthModal();
+
   return (
     <SpotlightBackground>
       <main className="relative">
@@ -97,11 +100,11 @@ export default function Home() {
                 variants={fadeIn}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Button asChild size="lg" className="text-base group">
-                  <Link href="/login" className="gap-2">
+                <Button size="lg" className="text-base group" onClick={openSignupModal}>
+                  <span className="gap-2 flex items-center">
                     Get Started
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
+                  </span>
                 </Button>
                 <Button
                   asChild
@@ -270,11 +273,11 @@ export default function Home() {
                 life together.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button asChild size="lg" className="text-base group">
-                  <Link href="/login" className="gap-2">
+                <Button size="lg" className="text-base group" onClick={openSignupModal}>
+                  <span className="gap-2 flex items-center">
                     Start Your Journey
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-                  </Link>
+                  </span>
                 </Button>
                 <Button
                   asChild
