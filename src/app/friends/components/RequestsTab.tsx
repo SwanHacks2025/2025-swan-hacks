@@ -42,13 +42,16 @@ export function RequestsTab({
             </Avatar>
             <div>
               <p className="font-semibold">{request.username}</p>
-              <p className="text-sm text-muted-foreground">wants to be your friend</p>
+              <p className="text-sm text-muted-foreground">
+                wants to be your friend
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
             <Button
               size="sm"
               onClick={() => onAcceptRequest(request.uid)}
+              className="cursor-pointer hover:scale-105 transition-transform"
             >
               <Check className="w-4 h-4 mr-2" />
               Accept
@@ -57,6 +60,7 @@ export function RequestsTab({
               size="sm"
               variant="outline"
               onClick={() => onDeclineRequest(request.uid)}
+              className="cursor-pointer hover:scale-105 transition-transform hover:bg-destructive/10 hover:border-destructive/50"
             >
               <X className="w-4 h-4" />
             </Button>
@@ -66,4 +70,3 @@ export function RequestsTab({
     </div>
   );
 }
-

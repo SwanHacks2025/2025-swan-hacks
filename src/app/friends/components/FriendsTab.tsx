@@ -26,17 +26,46 @@ export function FriendsTab({
     (c) => !friendIds.has(c.otherUser.uid)
   );
 
-  // Create a combined list: friends first, then non-friend conversations
+  // Create a unified list with both friends and conversations, sorted by last message time
   const allItems: Array<{
     type: 'friend' | 'conversation';
     data: UserResult | Conversation;
+    lastMessageTime: number | null; // timestamp in milliseconds for sorting
   }> = [
-    ...friends.map((f) => ({ type: 'friend' as const, data: f })),
+    // Map friends to items with their conversation's lastMessageTime
+    ...friends.map((f) => {
+      const chatId = getChatId(currentUserId, f.uid);
+      const conversation = conversations.find((c) => c.chatId === chatId);
+      return {
+        type: 'friend' as const,
+        data: f,
+        lastMessageTime: conversation?.lastMessageTime
+          ? conversation.lastMessageTime.toMillis()
+          : null,
+      };
+    }),
+    // Map non-friend conversations
     ...nonFriendConversations.map((c) => ({
       type: 'conversation' as const,
       data: c,
+      lastMessageTime: c.lastMessageTime ? c.lastMessageTime.toMillis() : null,
     })),
   ];
+
+  // Sort by last message time (most recent first), then by type (friends with messages first)
+  allItems.sort((a, b) => {
+    // If both have lastMessageTime, sort by time (most recent first)
+    if (a.lastMessageTime && b.lastMessageTime) {
+      return b.lastMessageTime - a.lastMessageTime;
+    }
+    // If only one has lastMessageTime, prioritize it
+    if (a.lastMessageTime && !b.lastMessageTime) return -1;
+    if (!a.lastMessageTime && b.lastMessageTime) return 1;
+    // If neither has lastMessageTime, maintain original order (friends first)
+    if (a.type === 'friend' && b.type === 'conversation') return -1;
+    if (a.type === 'conversation' && b.type === 'friend') return 1;
+    return 0;
+  });
 
   if (allItems.length === 0) {
     return (
@@ -68,10 +97,10 @@ export function FriendsTab({
                   }
                 )
               }
-              className={`w-full p-3 rounded-lg border transition-colors text-left ${
+              className={`w-full p-3 rounded-lg border transition-all text-left cursor-pointer ${
                 selectedChatId === chatId
                   ? 'bg-background text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50 hover:border-primary/30'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -98,10 +127,10 @@ export function FriendsTab({
             <button
               key={conversation.chatId}
               onClick={() => onSelectChat(conversation)}
-              className={`w-full p-3 rounded-lg border transition-colors text-left ${
+              className={`w-full p-3 rounded-lg border transition-all text-left cursor-pointer ${
                 selectedChatId === conversation.chatId
                   ? 'bg-background text-primary shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50 hover:border-primary/30'
               }`}
             >
               <div className="flex items-center gap-3">

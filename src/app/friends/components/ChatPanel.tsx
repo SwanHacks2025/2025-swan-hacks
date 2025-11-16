@@ -111,7 +111,7 @@ export function ChatPanel({
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="md:hidden h-8 w-8 -ml-1"
+            className="md:hidden h-8 w-8 -ml-1 cursor-pointer hover:bg-accent transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -127,7 +127,7 @@ export function ChatPanel({
         <div className="flex-1">
           <Link
             href={`/profile/${selectedConversation.otherUser.uid}`}
-            className="text-base md:text-lg font-bold text-foreground hover:text-primary transition-colors"
+            className="text-base md:text-lg font-bold text-foreground hover:text-primary transition-colors cursor-pointer"
           >
             {selectedConversation.otherUser.username}
           </Link>
@@ -201,7 +201,7 @@ export function ChatPanel({
           <Button
             onClick={onSendMessage}
             disabled={sending || !messageText.trim()}
-            className="rounded-lg md:rounded-xl px-4 md:px-5"
+            className="rounded-lg md:rounded-xl px-4 md:px-5 cursor-pointer disabled:cursor-not-allowed hover:scale-105 transition-transform disabled:hover:scale-100"
             size="default"
           >
             <Send className="w-4 h-4" />
