@@ -28,10 +28,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateTimePicker } from "./date-time-picker";
-import { CommunityEvent, communityEventConverter, EventTypes } from "@/lib/firebaseEvents";
+import { CommunityEvent, communityEventConverter, EventTypes, getEventTypeFilename } from "@/lib/firebaseEvents";
 import { auth, db } from "@/lib/firebaseClient";
 import { onAuthStateChanged, User } from "@firebase/auth";
 import { collection, doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
+import { redirect, RedirectType } from "next/navigation";
 
 type NominatimResult = {
   display_name: string;
@@ -114,6 +115,8 @@ export function EventDialog() {
   // SUBMIT HANDLER
   // -----------------------
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    if (!user || loading) return
+
     e.preventDefault();
     setAddressError("");
 
@@ -140,10 +143,12 @@ export function EventDialog() {
     const name = form.get("name")!.toString();
     const description = form.get("description")!.toString();
     const category = form.get("category") as EventTypes;
+    const model = getEventTypeFilename(category);
     const locationStr = form.get("address")!.toString();
     const dateStr = form.get("date")!.toString();
     const startStr = form.get("startTime")!.toString();
     const endStr = form.get("endTime")!.toString();
+    const image = form.get("image")!.toString();
 
     const startDate = new Date(`${dateStr}T${startStr}`);
     const endDate = new Date(`${dateStr}T${endStr}`);
@@ -162,13 +167,17 @@ export function EventDialog() {
       locationStr,
       startDate,
       owner,
-      attendees
+      attendees,
+      image,
+      model
     );
 
     console.log("EVENT OBJECT:", event);
 
     const db = getFirestore();
     await setDoc(doc(db, "Events", event.id).withConverter(communityEventConverter), event);
+    
+    window.location.reload();
   };
   
   if (loading) {
@@ -176,22 +185,22 @@ export function EventDialog() {
   }
 
   return (
-      <Dialog>
-  <DialogTrigger asChild>
-    <SidebarMenuButton>
-      <Plus />
-      <span>Create new event</span>
-    </SidebarMenuButton>
-  </DialogTrigger>
+    <Dialog>
+      <DialogTrigger asChild>
+        <SidebarMenuButton>
+          <Plus />
+          <span>Create new event</span>
+        </SidebarMenuButton>
+      </DialogTrigger>
 
-  <DialogContent className="sm:max-w-[500px]">
-    <form onSubmit={handleSubmit}>
-      <DialogHeader>
-        <DialogTitle>Create new event</DialogTitle>
-        <DialogDescription>
-          Schedule a new event in your community.
-        </DialogDescription>
-      </DialogHeader>
+      <DialogContent className="sm:max-w-[500px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create new event</DialogTitle>
+            <DialogDescription>
+              Schedule a new event in your community.
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="grid gap-5">
 
@@ -235,7 +244,7 @@ export function EventDialog() {
               <div className="relative">
                 <Input
                   name="address"
-                  placeholder="123 Main St"
+                  placeholder="2520 Osborn Dr, Ames, IA   (Geocoding by OpenStreetMaps)"
                   autoComplete="off"
                   value={address}
                   onChange={(e) => {
@@ -276,16 +285,19 @@ export function EventDialog() {
 
             {/* Date + Time Picker */}
             <DateTimePicker />
+            <div className="grid gap-5">
+              <Label>Image URL</Label>
+              <Input name="image" placeholder="Image..." required />
+            </div>
           </div>
-
-            <DialogFooter>
-        <DialogClose asChild>
-          <Button variant="outline">Cancel</Button>
-        </DialogClose>
-        <Button type="submit">Create Event</Button>
-      </DialogFooter>
-    </form>
-  </DialogContent>
-</Dialog>
+          <DialogFooter className="mt-2">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button type="submit">Create Event</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
