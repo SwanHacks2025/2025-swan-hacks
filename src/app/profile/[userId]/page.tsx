@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { db } from '@/lib/firebaseClient';
 import { useAuth } from '@/lib/firebaseAuth';
 import {
@@ -11,10 +10,25 @@ import {
   updateDoc,
   arrayUnion,
   arrayRemove,
+  collection,
+  query,
+  where,
+  getDocs,
+  or,
 } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { UserPlus, Check, X, ArrowLeft, MessageCircle, UserMinus } from 'lucide-react';
+import {
+  UserPlus,
+  Check,
+  X,
+  ArrowLeft,
+  MessageCircle,
+  UserMinus,
+  Lock,
+  Calendar,
+  MapPin,
+} from 'lucide-react';
 import Link from 'next/link';
 import {
   Dialog,
@@ -33,9 +47,13 @@ export default function ViewProfilePage() {
 
   const [profileUser, setProfileUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [friendStatus, setFriendStatus] = useState<'none' | 'sent' | 'received' | 'friends' | 'self'>('none');
+  const [friendStatus, setFriendStatus] = useState<
+    'none' | 'sent' | 'received' | 'friends' | 'self'
+  >('none');
   const [updating, setUpdating] = useState(false);
   const [removeFriendDialogOpen, setRemoveFriendDialogOpen] = useState(false);
+  const [previousEvents, setPreviousEvents] = useState<any[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
 
   // Generate chat ID from two user IDs (sorted for consistency)
   const getChatId = (uid1: string, uid2: string) => {
@@ -59,11 +77,11 @@ export default function ViewProfilePage() {
     const loadProfile = async () => {
       try {
         setLoading(true);
-        
+
         // Load profile user data
         const profileRef = doc(db, 'Users', userId);
         const profileSnap = await getDoc(profileRef);
-        
+
         if (!profileSnap.exists()) {
           setLoading(false);
           return;
@@ -75,12 +93,12 @@ export default function ViewProfilePage() {
         // Check friend status
         const currentUserRef = doc(db, 'Users', user.uid);
         const currentUserSnap = await getDoc(currentUserRef);
-        
+
         let canViewProfile = false;
         let friends: string[] = [];
         let sentRequests: string[] = [];
         let receivedRequests: string[] = [];
-        
+
         if (currentUserSnap.exists()) {
           const currentUserData = currentUserSnap.data();
           friends = currentUserData.friends || [];
@@ -108,8 +126,8 @@ export default function ViewProfilePage() {
           uid: userId,
           username: profileData.Username || 'Unknown',
           photoURL: profileData.customPhotoURL || profileData.photoURL || null,
-          bio: canViewProfile ? (profileData.bio || '') : '',
-          interests: canViewProfile ? (profileData.interests || []) : [],
+          bio: canViewProfile ? profileData.bio || '' : '',
+          interests: canViewProfile ? profileData.interests || [] : [],
           isPrivate: isProfilePrivate,
           canViewProfile,
         });
@@ -122,6 +140,64 @@ export default function ViewProfilePage() {
 
     loadProfile();
   }, [user, authLoading, userId, router]);
+
+  // Load previous events
+  useEffect(() => {
+    const fetchPreviousEvents = async () => {
+      if (!user || !userId || !profileUser) return;
+
+      // Only load events if user can view profile
+      if (profileUser.isPrivate && !profileUser.canViewProfile) {
+        setPreviousEvents([]);
+        return;
+      }
+
+      setLoadingEvents(true);
+      try {
+        const eventsRef = collection(db, 'Events');
+        const now = new Date();
+
+        // Query for events where profile user is owner or attendee and date is in the past
+        const q = query(
+          eventsRef,
+          or(
+            where('owner', '==', userId),
+            where('attendees', 'array-contains', userId)
+          )
+        );
+
+        const querySnapshot = await getDocs(q);
+        const events: any[] = [];
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          const eventDate = data.date?.toDate();
+
+          // Only include past events
+          if (eventDate && eventDate < now) {
+            events.push({
+              id: doc.id,
+              ...data,
+              date: eventDate,
+            });
+          }
+        });
+
+        // Sort by date (most recent first)
+        events.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+        setPreviousEvents(events);
+      } catch (err) {
+        console.error('Error loading previous events:', err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    if (!authLoading && user && profileUser) {
+      fetchPreviousEvents();
+    }
+  }, [user, authLoading, userId, profileUser]);
 
   const handleSendFriendRequest = async () => {
     if (!user || updating) return;
@@ -224,149 +300,202 @@ export default function ViewProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="container mx-auto px-6 py-24">
-        <p className="text-center">Loading...</p>
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
   if (!user || !profileUser) {
     return (
-      <div className="container mx-auto px-6 py-24">
-        <p className="text-center">Profile not found</p>
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Profile not found</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-6 py-24 max-w-2xl">
-      <Button
-        variant="ghost"
-        onClick={() => router.back()}
-        className="mb-4"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back
-      </Button>
+    <div className="min-h-screen pt-28 pb-12 px-6">
+      <div className="max-w-2xl mx-auto">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="mb-4 w-fit gap-2 cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
 
-      <div className="space-y-6">
-        {/* Profile Header */}
-        <div className="flex flex-col items-center space-y-4">
-          <div className="relative h-32 w-32 rounded-full overflow-hidden border-2">
-            {profileUser.photoURL ? (
-              <Image
-                src={profileUser.photoURL}
-                alt={profileUser.username}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center text-4xl bg-gray-200">
-                {profileUser.username.charAt(0).toUpperCase()}
+        {/* Floating Island Container */}
+        <div className="bg-background/70 backdrop-blur-xl rounded-2xl border border-border shadow-lg">
+          {/* Header with Profile Picture */}
+          <div className="p-8 border-b border-border/50">
+            <div className="flex flex-col items-center gap-4">
+              <Avatar className="h-32 w-32 ring-4 ring-primary/10">
+                {profileUser.photoURL ? (
+                  <AvatarImage
+                    src={profileUser.photoURL}
+                    alt={profileUser.username}
+                  />
+                ) : (
+                  <AvatarFallback className="bg-primary/10 text-primary text-4xl font-bold">
+                    {profileUser.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+
+              <div className="text-center">
+                <h1 className="text-3xl font-bold">{profileUser.username}</h1>
+                {profileUser.isPrivate && (
+                  <div className="flex items-center justify-center gap-2 mt-2 text-sm text-muted-foreground">
+                    <Lock className="w-4 h-4" />
+                    <span>Private Account</span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <div className="text-center">
-            <h1 className="text-3xl font-bold">{profileUser.username}</h1>
-          </div>
-
-          {/* Friend Status/Actions */}
-          <div className="flex gap-2 flex-wrap justify-center">
-            {friendStatus === 'friends' && (
-              <>
-                <Button
-                  asChild
-                  variant="default"
-                >
-                  <Link href={`/friends?chat=${getChatId(user.uid, userId)}`}>
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Message
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setRemoveFriendDialogOpen(true)}
-                >
-                  <UserMinus className="w-4 h-4 mr-2" />
-                  Remove Friend
-                </Button>
-              </>
-            )}
-            {friendStatus === 'sent' && (
-              <Button variant="outline" disabled>
-                Request Sent
-              </Button>
-            )}
-            {friendStatus === 'received' && (
-              <>
-                <Button onClick={handleAcceptRequest} disabled={updating}>
-                  <Check className="w-4 h-4 mr-2" />
-                  Accept
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDeclineRequest}
-                  disabled={updating}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </>
-            )}
-            {friendStatus === 'none' && (
-              <Button onClick={handleSendFriendRequest} disabled={updating}>
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Friend
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Privacy Notice */}
-        {profileUser.isPrivate && !profileUser.canViewProfile && (
-          <div className="space-y-2 p-4 bg-muted rounded-lg">
-            <p className="text-muted-foreground text-center">
-              This is a private account. Only friends can view their profile information.
-            </p>
-          </div>
-        )}
-
-        {/* Bio Section */}
-        {profileUser.canViewProfile && profileUser.bio && (
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Bio</h2>
-            <p className="text-muted-foreground whitespace-pre-wrap">
-              {profileUser.bio}
-            </p>
-          </div>
-        )}
-
-        {/* Interests Section */}
-        {profileUser.canViewProfile && profileUser.interests && profileUser.interests.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-xl font-semibold">Interests</h2>
-            <div className="flex flex-wrap gap-2">
-              {profileUser.interests.map((interest: string, index: number) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
-                >
-                  {interest}
-                </span>
-              ))}
+              {/* Friend Status/Actions */}
+              <div className="flex gap-2 flex-wrap justify-center mt-2">
+                {friendStatus === 'friends' && (
+                  <>
+                    <Button asChild variant="default" className="gap-2">
+                      <Link
+                        href={`/friends?chat=${getChatId(user.uid, userId)}`}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        Message
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setRemoveFriendDialogOpen(true)}
+                      className="gap-2 cursor-pointer"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                      Remove Friend
+                    </Button>
+                  </>
+                )}
+                {friendStatus === 'sent' && (
+                  <Button variant="outline" disabled>
+                    Request Sent
+                  </Button>
+                )}
+                {friendStatus === 'received' && (
+                  <>
+                    <Button
+                      onClick={handleAcceptRequest}
+                      disabled={updating}
+                      className="gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Accept
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleDeclineRequest}
+                      disabled={updating}
+                      className="gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Decline
+                    </Button>
+                  </>
+                )}
+                {friendStatus === 'none' && (
+                  <Button
+                    onClick={handleSendFriendRequest}
+                    disabled={updating}
+                    className="gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Add Friend
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Content Sections */}
+          <div className="p-8 space-y-6">
+            {/* Privacy Notice */}
+            {profileUser.isPrivate && !profileUser.canViewProfile && (
+              <div className="bg-muted/30 rounded-lg px-6 py-8 text-center">
+                <Lock className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">
+                  This is a private account. Only friends can view their profile
+                  information.
+                </p>
+              </div>
+            )}
+
+            {/* Bio Section */}
+            {profileUser.canViewProfile && profileUser.bio && (
+              <div className="space-y-3">
+                <label className="text-sm font-semibold text-muted-foreground">
+                  Bio
+                </label>
+                <div className="bg-muted/30 rounded-lg px-4 py-3 min-h-[100px] mt-3">
+                  <p className="text-foreground/80 whitespace-pre-wrap">
+                    {profileUser.bio}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Interests Section */}
+            {profileUser.canViewProfile &&
+              profileUser.interests &&
+              profileUser.interests.length > 0 && (
+                <div className="space-y-4">
+                  <label className="text-sm font-semibold text-muted-foreground">
+                    Interests
+                  </label>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {profileUser.interests.map(
+                      (interest: string, index: number) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium border border-primary/20"
+                        >
+                          {interest}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+            {/* Empty State for No Bio/Interests/Events */}
+            {profileUser.canViewProfile &&
+              !profileUser.bio &&
+              (!profileUser.interests || profileUser.interests.length === 0) &&
+              previousEvents.length === 0 &&
+              !loadingEvents && (
+                <div className="bg-muted/30 rounded-lg px-6 py-8 text-center mt-3">
+                  <p className="text-muted-foreground">
+                    {profileUser.username} hasn&apos;t added any profile
+                    information yet.
+                  </p>
+                </div>
+              )}
+          </div>
+        </div>
       </div>
 
       {/* Remove Friend Confirmation Dialog */}
-      <Dialog open={removeFriendDialogOpen} onOpenChange={setRemoveFriendDialogOpen}>
+      <Dialog
+        open={removeFriendDialogOpen}
+        onOpenChange={setRemoveFriendDialogOpen}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove Friend?</DialogTitle>
             <DialogDescription>
-              Are you sure you want to remove {profileUser?.username} from your friends list? 
-              You'll need to send a new friend request to message them again.
+              Are you sure you want to remove {profileUser?.username} from your
+              friends list? You'll need to send a new friend request to message
+              them again.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -389,4 +518,3 @@ export default function ViewProfilePage() {
     </div>
   );
 }
-
