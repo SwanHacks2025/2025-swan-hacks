@@ -1,4 +1,3 @@
-// app/profile/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,12 +13,20 @@ import {
   setDoc,
 } from "firebase/firestore";
 
+import { CommunityEvent, fetchCommunityEvents } from "@/lib/firebaseEvents";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
+import { EventCard } from "@/components/event-card";
+
 export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const [events, setEvents] = useState<CommunityEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
   // Listen for auth state
   useEffect(() => {
@@ -37,7 +44,6 @@ export default function ProfilePage() {
         const data = snap.data() as { Username?: string };
         setUsername(data.Username || firebaseUser.displayName || "");
       } else {
-        // Default to displayName if no doc
         setUsername(firebaseUser.displayName || "");
       }
 
@@ -45,6 +51,14 @@ export default function ProfilePage() {
     });
 
     return () => unsub();
+  }, []);
+
+  // Fetch events
+  useEffect(() => {
+    fetchCommunityEvents()
+      .then((events) => setEvents(events))
+      .catch((err) => console.error(err))
+      .finally(() => setEventsLoading(false));
   }, []);
 
   const handleSave = async () => {
@@ -55,7 +69,6 @@ export default function ProfilePage() {
     try {
       const userRef = doc(db, "Users", user.uid);
 
-      // Set field "Username" at /Users/<uid>
       await setDoc(
         userRef,
         { Username: username },
@@ -80,35 +93,33 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Profile</h1>
+    <div>
+      <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
+        <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
+          <SidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mx-2 data-[orientation=vertical]:h-4"
+          />
+          <h1 className="text-base font-medium">Registered Events</h1>
+        </div>
+      </header>
 
-      <div className="space-y-1">
-        <p className="text-sm text-gray-500">User ID</p>
-        <p className="font-mono text-sm break-all">{user.uid}</p>
+      <div className="flex flex-1 flex-col">
+        <div className="@container/main flex flex-1 flex-col gap-2">
+          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-2">
+              {eventsLoading ? (
+                <p>Loading events…</p>
+              ) : (
+                events.map((e) => (
+                  <EventCard key={e.id} event={e} />
+                ))
+              )}
+            </div>
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-1">
-        <label className="block text-sm font-medium">Username</label>
-        <input
-          className="w-full border rounded px-3 py-2 text-sm"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Enter your username"
-        />
-      </div>
-
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="px-4 py-2 rounded bg-blue-600 text-white text-sm disabled:opacity-60"
-      >
-        {saving ? "Saving…" : "Save"}
-      </button>
-
-      {message && (
-        <p className="text-sm text-gray-700">{message}</p>
-      )}
     </div>
   );
 }
