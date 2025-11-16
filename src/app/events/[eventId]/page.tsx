@@ -1,43 +1,44 @@
-"use client";
+'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { notFound } from "next/navigation";
-import Image from "next/image";
-import dynamic from "next/dynamic";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { notFound } from 'next/navigation';
+import Image from 'next/image';
 
-import ModelViewerClient from "./ModelViewerClient";
-import { useEffect, useState } from "react";
-import { CommunityEvent, getCommunityEvent } from "@/lib/firebaseEvents";
-import React from "react";
+import { useEffect, useState } from 'react';
+import { CommunityEvent, getCommunityEvent } from '@/lib/firebaseEvents';
+import React from 'react';
 
-export default function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
+export default function EventPage({
+  params,
+}: {
+  params: Promise<{ eventId: string }>;
+}) {
   const [loading, setLoading] = useState(true);
   const [communityEvent, setEvents] = useState<CommunityEvent>();
-  
+
   const { eventId } = React.use(params);
 
   useEffect(() => {
     getCommunityEvent(eventId)
-    .then((e) => {
-      if (e) {
-        setEvents(e);
-      } else {
-        console.warn("Event not found");
-      }
-    })
-    .catch(console.error)
-    .finally(() => setLoading(false));
+      .then((e) => {
+        if (e) {
+          setEvents(e);
+        } else {
+          console.warn('Event not found');
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [loading, eventId]);
 
-  if (loading) return (<p>Loading...</p>);
-  if (!communityEvent) return notFound(); 
+  if (loading) return <p>Loading...</p>;
+  if (!communityEvent) return notFound();
 
   return (
     <div className="container mx-auto max-w-7xl py-10 mt-11">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        
         {/* LEFT SIDE — Event Info */}
         <div className="lg:col-span-2 space-y-10">
           <Card>
@@ -51,12 +52,17 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-lg">{communityEvent.description}</p>
+              <p className="text-muted-foreground text-lg">
+                {communityEvent.description}
+              </p>
 
               <Separator />
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <InfoBlock label="Date" value={communityEvent.date.toString()} />
+                <InfoBlock
+                  label="Date"
+                  value={communityEvent.date.toString()}
+                />
                 <InfoBlock label="Location" value={communityEvent.location} />
                 <InfoBlock label="Owner" value={communityEvent.owner} />
               </div>
@@ -78,7 +84,6 @@ export default function EventPage({ params }: { params: Promise<{ eventId: strin
         </div>
 
         <div className="flex flex-col gap-10">
-          
           {/* Image */}
           <Card>
             <CardHeader>
