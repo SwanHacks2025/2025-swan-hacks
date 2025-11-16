@@ -5,370 +5,440 @@ import { useRef, useState, useEffect } from 'react';
 import { Viewer, CesiumComponentRef } from 'resium';
 import { fetchCommunityEvents, CommunityEvent } from '@/lib/firebaseEvents';
 import {
-  Ion,
-  Viewer as CesiumViewer,
-  createWorldTerrainAsync,
-  createGooglePhotorealistic3DTileset,
-  Cartesian3,
-} from 'cesium';
-import 'cesium/Build/Cesium/Widgets/widgets.css';
-import * as Cesium from 'cesium';
+    Ion,
+    Viewer as CesiumViewer,
+    createWorldTerrainAsync,
+    createGooglePhotorealistic3DTileset,
+    Cartesian3,
+} from "cesium";
+import "cesium/Build/Cesium/Widgets/widgets.css";
+import * as Cesium from "cesium";
+import { Button } from "@/components/ui/button";
+import { Home, Filter } from "lucide-react";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+    DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 export async function createCircularImage(
   url: string,
   size = 128
 ): Promise<HTMLCanvasElement> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext('2d', { alpha: true })!;
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d", { alpha: true })!;
 
-      ctx.clearRect(0, 0, size, size);
+            ctx.clearRect(0, 0, size, size);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
 
-      ctx.drawImage(img, 0, 0, size, size);
-      ctx.restore();
+            ctx.drawImage(img, 0, 0, size, size);
+            ctx.restore();
 
-      // optional soft edge alpha tweak (keeps border smooth)
-      const imageData = ctx.getImageData(0, 0, size, size);
-      const data = imageData.data;
-      const centerX = size / 2;
-      const centerY = size / 2;
-      const radius = size / 2;
+            const imageData = ctx.getImageData(0, 0, size, size);
+            const data = imageData.data;
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const radius = size / 2;
 
-      for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
-          const dx = x - centerX;
-          const dy = y - centerY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const dx = x - centerX;
+                    const dy = y - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
 
-          const idx = (y * size + x) * 4;
+                    const idx = (y * size + x) * 4;
 
-          if (distance > radius) {
-            data[idx + 3] = 0;
-          } else if (distance > radius - 2) {
-            const alpha = (radius - distance) / 2;
-            data[idx + 3] = Math.floor(data[idx + 3] * alpha);
-          }
-        }
-      }
+                    if (distance > radius) {
+                        data[idx + 3] = 0;
+                    } else if (distance > radius - 2) {
+                        const alpha = (radius - distance) / 2;
+                        data[idx + 3] = Math.floor(data[idx + 3] * alpha);
+                    }
+                }
+            }
 
-      ctx.putImageData(imageData, 0, 0);
-      resolve(canvas);
-    };
-    img.onerror = () => {
-      // fallback: return an empty canvas so billboard creation won't crash
-      const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
-      resolve(canvas);
-    };
-    img.src = url;
-  });
+            ctx.putImageData(imageData, 0, 0);
+            resolve(canvas);
+        };
+        img.onerror = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            resolve(canvas);
+        };
+        img.src = url;
+    });
 }
 
 interface CesiumMapProps {
   onMarkerClick?: (markerId: string, markerData: any) => void;
 }
 
+// Initial camera position
+const INITIAL_POSITION = {
+    lon: -93.647072,
+    lat: 42.015421,
+    height: 1000,
+    heading: 0,
+    pitch: -45,
+    roll: 0,
+};
+
 export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
   const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
 
-  const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('Initializing map...');
+    const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingMessage, setLoadingMessage] = useState("Initializing map...");
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [allCategories, setAllCategories] = useState<string[]>([]);
 
-  // prevent duplicate marker loads
-  const markersLoadedRef = useRef(false);
+    const markersLoadedRef = useRef(false);
+    const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
+    const postRenderListenerRef = useRef<(() => void) | null>(null);
+    const viewerReadyRef = useRef(false);
+
+    useEffect(() => {
+        if (ION_TOKEN) {
+            Ion.defaultAccessToken = ION_TOKEN;
+        }
+    }, [ION_TOKEN]);
+
+    useEffect(() => {
+        const initViewer = async () => {
+            if (!viewerRef.current?.cesiumElement) return;
+            const viewer = viewerRef.current.cesiumElement;
+
+            try {
+                viewer.cesiumWidget.creditContainer.style.display = "none";
+            } catch (e) {
+                // ignore
+            }
+
+            try {
+                setLoadingMessage("Setting camera position...");
+                setLoadingProgress(20);
+
+                viewer.camera.setView({
+                    destination: Cartesian3.fromDegrees(
+                        INITIAL_POSITION.lon,
+                        INITIAL_POSITION.lat,
+                        INITIAL_POSITION.height
+                    ),
+                });
+
+                setLoadingMessage("Loading terrain...");
+                setLoadingProgress(40);
+                const terrain = await createWorldTerrainAsync();
+                viewer.terrainProvider = terrain;
+
+                viewer.scene.globe.depthTestAgainstTerrain = true;
+                viewer.scene.globe.enableLighting = false;
+
+                viewer.imageryLayers.addImageryProvider(
+                    new Cesium.UrlTemplateImageryProvider({
+                        url: "https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png",
+                        subdomains: ["a", "b", "c", "d"],
+                        credit: "Map tiles by CartoDB, under CC BY 3.0",
+                    })
+                );
+
+                if (GOOGLE_KEY) {
+                    setLoadingMessage("Loading Google 3D Tiles...");
+                    setLoadingProgress(60);
+                    try {
+                        const tileset = await createGooglePhotorealistic3DTileset({
+                            key: GOOGLE_KEY,
+                        });
+                        viewer.scene.primitives.add(tileset);
+                        setLoadingProgress(80);
+
+                        setTimeout(() => {
+                            viewer.camera.flyTo({
+                                destination: Cartesian3.fromDegrees(
+                                    INITIAL_POSITION.lon,
+                                    INITIAL_POSITION.lat,
+                                    INITIAL_POSITION.height
+                                ),
+                                orientation: {
+                                    heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+                                    pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+                                    roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
+                                },
+                                duration: 2,
+                            });
+                        }, 1000);
+                    } catch (googleError: any) {
+                        console.error("Google 3D Tiles error:", googleError);
+                    }
+                }
+
+                setLoadingMessage("Loading markers...");
+                setLoadingProgress(90);
+            } catch (err: any) {
+                console.error("Initialization error:", err);
+                setLoadingMessage("Error loading map");
+            }
+        };
 
   // keep references to cleanup listener objects
   const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const postRenderListenerRef = useRef<(() => void) | null>(null);
   const viewerReadyRef = useRef(false);
 
-  useEffect(() => {
-    if (ION_TOKEN) {
-      Ion.defaultAccessToken = ION_TOKEN;
-    }
-  }, [ION_TOKEN]);
+    useEffect(() => {
+        let mounted = true;
 
-  useEffect(() => {
-    const initViewer = async () => {
-      if (!viewerRef.current?.cesiumElement) return;
-      const viewer = viewerRef.current.cesiumElement;
+        const loadMarkersFromFirestore = async () => {
+            const viewer = viewerRef.current?.cesiumElement;
+            if (!viewer) {
+                setTimeout(loadMarkersFromFirestore, 100);
+                return;
+            }
 
-      // hide Cesium credit
-      try {
-        (viewer.cesiumWidget.creditContainer as any).style.display = 'none';
-      } catch (e) {
-        // ignore if not available yet
-      }
+            if (markersLoadedRef.current) {
+                return;
+            }
 
-      try {
-        setLoadingMessage('Setting camera position...');
-        setLoadingProgress(20);
+            markersLoadedRef.current = true;
 
-        viewer.camera.setView({
-          destination: Cartesian3.fromDegrees(-93.647072, 42.015421, 1000),
-        });
+            let events: CommunityEvent[] = [];
+            try {
+                events = await fetchCommunityEvents();
+                console.log("Fetched events:", events);
+            } catch (err) {
+                console.error("Error fetching community events:", err);
+                setLoadingProgress(100);
+                setLoadingMessage("Complete!");
+                setTimeout(() => setIsLoading(false), 1200);
+                return;
+            }
 
-        setLoadingMessage('Loading terrain...');
-        setLoadingProgress(40);
-        const terrain = await createWorldTerrainAsync();
-        viewer.terrainProvider = terrain;
+            if (!mounted) return;
 
-        viewer.scene.globe.depthTestAgainstTerrain = true;
-        viewer.scene.globe.enableLighting = false;
+            // Extract unique categories
+            const categories = Array.from(
+                new Set(events.map((e) => e.category).filter(Boolean))
+            ) as string[];
+            setAllCategories(categories);
+            setSelectedCategories(categories); // Initially show all
 
-        // CartoDB labels layer (CORS-friendly)
-        viewer.imageryLayers.addImageryProvider(
-          new Cesium.UrlTemplateImageryProvider({
-            url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png',
-            subdomains: ['a', 'b', 'c', 'd'],
-            credit: 'Map tiles by CartoDB, under CC BY 3.0',
-          })
-        );
+            // build entities
+            for (const evt of events) {
+                const lng = (evt as any).long ?? (evt as any).longitude ?? 0;
+                const lat = (evt as any).lat ?? (evt as any).latitude ?? 0;
+                const height = 290;
 
-        if (GOOGLE_KEY) {
-          setLoadingMessage('Loading Google 3D Tiles...');
-          setLoadingProgress(60);
-          try {
-            const tileset = await createGooglePhotorealistic3DTileset({
-              key: GOOGLE_KEY,
-            });
-            viewer.scene.primitives.add(tileset);
-            setLoadingProgress(80);
+                const pos = Cesium.Cartesian3.fromDegrees(lng, lat, height);
 
-            setTimeout(() => {
-              viewer.camera.flyTo({
-                destination: Cartesian3.fromDegrees(
-                  -93.647072,
-                  42.015421,
-                  1000
-                ),
-                orientation: {
-                  heading: Cesium.Math.toRadians(0),
-                  pitch: Cesium.Math.toRadians(-45),
-                  roll: Cesium.Math.toRadians(0),
-                },
-                duration: 2,
-              });
-            }, 1000);
-          } catch (googleError: any) {
-            console.error('Google 3D Tiles error:', googleError);
-          }
-        }
+                let circleImage: HTMLCanvasElement | string = "/file.svg";
+                if (evt.imageUri) {
+                    try {
+                        circleImage = await createCircularImage(evt.imageUri, 128);
+                    } catch (err) {
+                        console.warn("Failed to create circular image", err);
+                        circleImage = evt.imageUri;
+                    }
+                }
 
-        setLoadingMessage('Loading markers...');
-        setLoadingProgress(90);
-      } catch (err: any) {
-        console.error('Initialization error:', err);
-        setLoadingMessage('Error loading map');
-      }
-    };
+                const entity = viewer.entities.add({
+                    id: evt.id,
+                    name: evt.name,
+                    position: pos,
+                    model: evt.modelUri
+                        ? {
+                            uri: evt.modelUri,
+                            scale: 1,
+                            minimumPixelSize: 32,
+                        }
+                        : undefined,
+                    billboard: {
+                        image: circleImage,
+                        scale: 0.6,
+                        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+                        disableDepthTestDistance: 0,
+                        enableDepthTest: true,
+                        eyeOffset: new Cesium.Cartesian3(0, 0, 0),
+                        pixelOffset: new Cesium.Cartesian2(0, -40),
+                    },
+                });
 
-    const timer = setTimeout(initViewer, 500);
-    return () => clearTimeout(timer);
-  }, [GOOGLE_KEY]);
+                (entity as any)._pos = pos;
+                (entity as any)._markerData = evt;
+                (entity as any)._category = evt.category;
+            }
 
-  useEffect(() => {
-    // Fetch events one-time from Firestore and create Cesium entities
-    let mounted = true;
+            if (!postRenderListenerRef.current) {
+                const fn = () => {
+                    const camera = viewer.camera;
+                    const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(camera.position);
+                    let height = carto.height;
 
-    const loadMarkersFromFirestore = async () => {
-      const viewer = viewerRef.current?.cesiumElement;
-      if (!viewer) {
-        setTimeout(loadMarkersFromFirestore, 100);
-        return;
-      }
+                    const minHeight = 500;
+                    const maxHeight = 2000;
 
-      // prevent duplicates
-      if (markersLoadedRef.current) {
-        return;
-      }
+                    if (height < minHeight) {
+                        carto.height = minHeight;
+                        camera.position = Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+                    } else if (height > maxHeight) {
+                        carto.height = maxHeight;
+                        camera.position = Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+                    }
 
-      markersLoadedRef.current = true;
+                    const cameraPos = viewer.camera.positionWC;
 
-      // fetch your typed events
-      let events: CommunityEvent[] = [];
-      try {
-        events = await fetchCommunityEvents();
-        console.log('Fetched events:', events);
-      } catch (err) {
-        console.error('Error fetching community events:', err);
-        // Still complete loading even if fetch fails
-        setLoadingProgress(100);
-        setLoadingMessage('Complete!');
-        setTimeout(() => setIsLoading(false), 1200);
-        return;
-      }
+                    viewer.entities.values.forEach((entity) => {
+                        const entityWithPos = entity as any;
+                        if (!entityWithPos._pos) return;
 
-      if (!mounted) return;
+                        const pos = entityWithPos._pos as any;
 
-      // build entities
-      for (const evt of events) {
-        console.log(evt);
-        // Use long / lat naming from your CommunityEvent
-        const lng = (evt as any).long ?? (evt as any).longitude ?? 0;
-        const lat = (evt as any).lat ?? (evt as any).latitude ?? 0;
-        const height = 290; // constant as requested
+                        const toCamera = Cesium.Cartesian3.subtract(
+                            cameraPos,
+                            pos,
+                            new Cesium.Cartesian3()
+                        );
 
-        const pos = Cesium.Cartesian3.fromDegrees(lng, lat, height);
+                        toCamera.z = 0;
+                        Cesium.Cartesian3.normalize(toCamera, toCamera);
 
-        // create circular image (await => ensures proper depth testing)
-        let circleImage: HTMLCanvasElement | string = '/file.svg';
-        if (evt.imageUri) {
-          try {
-            circleImage = await createCircularImage(evt.imageUri, 128);
-          } catch (err) {
-            console.warn(
-              'Failed to create circular image, falling back to raw URI',
-              err
-            );
-            circleImage = evt.imageUri;
-          }
-        }
+                        const heading = Math.atan2(toCamera.x, toCamera.y);
 
-        const entity = viewer.entities.add({
-          id: evt.id,
-          name: evt.name,
-          position: pos,
-          model: evt.modelUri
-            ? {
-                uri: evt.modelUri,
-                scale: 1,
-                minimumPixelSize: 32,
-              }
-            : undefined,
-          billboard: {
-            image: circleImage,
-            scale: 0.6,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            disableDepthTestDistance: 0,
-            eyeOffset: new Cesium.Cartesian3(0, 0, 0),
-            pixelOffset: new Cesium.Cartesian2(0, -40),
-          },
-        });
+                        entityWithPos.orientation = Cesium.Transforms.headingPitchRollQuaternion(
+                            pos,
+                            new Cesium.HeadingPitchRoll(heading, 0, 0)
+                        ) as any;
+                    });
+                };
 
-        // attach custom properties for rotation and selection
-        (entity as any)._pos = pos;
-        (entity as any)._markerData = evt;
-      }
+                viewer.scene.postRender.addEventListener(fn);
+                postRenderListenerRef.current = fn;
+            }
 
-      // add postRender rotation + zoom clamp if not already added
-      if (!postRenderListenerRef.current) {
-        const fn = () => {
-          const camera = viewer.camera;
-          const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(
-            camera.position
-          );
-          let height = carto.height;
+            viewerReadyRef.current = true;
+            console.log("Viewer is now ready, markers loaded");
 
-          const minHeight = 500;
-          const maxHeight = 2000;
-
-          if (height < minHeight) {
-            carto.height = minHeight;
-            camera.position =
-              Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
-          } else if (height > maxHeight) {
-            carto.height = maxHeight;
-            camera.position =
-              Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
-          }
-
-          const cameraPos = viewer.camera.positionWC;
-
-          viewer.entities.values.forEach((entity) => {
-            const entityWithPos = entity as any;
-            if (!entityWithPos._pos) return;
-
-            const pos = entityWithPos._pos as any;
-
-            const toCamera = Cesium.Cartesian3.subtract(
-              cameraPos,
-              pos,
-              new Cesium.Cartesian3()
-            );
-
-            toCamera.z = 0;
-            Cesium.Cartesian3.normalize(toCamera, toCamera);
-
-            const heading = Math.atan2(toCamera.x, toCamera.y);
-
-            entityWithPos.orientation =
-              Cesium.Transforms.headingPitchRollQuaternion(
-                pos,
-                new Cesium.HeadingPitchRoll(heading, 0, 0)
-              ) as any;
-          });
+            setLoadingProgress(100);
+            setLoadingMessage("Complete!");
+            setTimeout(() => setIsLoading(false), 1200);
         };
 
-        viewer.scene.postRender.addEventListener(fn);
-        postRenderListenerRef.current = fn;
-      }
+        const timer = setTimeout(loadMarkersFromFirestore, 1000);
 
       // Mark viewer as ready
       viewerReadyRef.current = true;
       console.log('Viewer is now ready, markers loaded');
 
-      // IMPORTANT: Complete the loading sequence
-      setLoadingProgress(100);
-      setLoadingMessage('Complete!');
-      setTimeout(() => setIsLoading(false), 1200);
-    };
+            const viewer = viewerRef.current?.cesiumElement;
+            if (postRenderListenerRef.current && viewer) {
+                viewer.scene.postRender.removeEventListener(postRenderListenerRef.current);
+                postRenderListenerRef.current = null;
+            }
+        };
+    }, []);
 
-    // Start loading with a delay to ensure viewer is ready
-    const timer = setTimeout(loadMarkersFromFirestore, 1000);
+    // Apply filter when selectedCategories changes
+    useEffect(() => {
+        const viewer = viewerRef.current?.cesiumElement;
+        if (!viewer || !viewerReadyRef.current) return;
 
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
+        viewer.entities.values.forEach((entity) => {
+            const entityWithCategory = entity as any;
+            const category = entityWithCategory._category;
 
-      // cleanup postRender listener
-      const viewer = viewerRef.current?.cesiumElement;
-      if (postRenderListenerRef.current && viewer) {
-        viewer.scene.postRender.removeEventListener(
-          postRenderListenerRef.current
-        );
-        postRenderListenerRef.current = null;
-      }
-    };
-  }, []); // Empty dependency array - only load markers once
+            entity.show = selectedCategories.length === 0 || selectedCategories.includes(category);
+        });
+    }, [selectedCategories]);
 
-  // Separate useEffect for click handler that updates when onMarkerClick changes
-  useEffect(() => {
-    console.log('Setting up click handler, onMarkerClick:', !!onMarkerClick);
-    console.log('Viewer ready?', viewerReadyRef.current);
-
-    const viewer = viewerRef.current?.cesiumElement;
-    if (!viewer || !viewerReadyRef.current) {
-      console.log('Viewer not ready for click handler, will retry...');
-      // Retry after a delay if viewer isn't ready
-      const retryTimer = setTimeout(() => {
-        if (viewerRef.current?.cesiumElement && viewerReadyRef.current) {
-          // Trigger re-run by forcing a state update
-          console.log('Retrying click handler setup');
+    // Single click handler useEffect
+    useEffect(() => {
+        const viewer = viewerRef.current?.cesiumElement;
+        if (!viewer || !viewerReadyRef.current) {
+            return;
         }
-      }, 2000);
-      return () => clearTimeout(retryTimer);
-    }
 
-    // Clean up old handler
-    if (clickHandlerRef.current) {
-      console.log('Destroying old click handler');
-      clickHandlerRef.current.destroy();
+        if (clickHandlerRef.current) {
+            clickHandlerRef.current.destroy();
+        }
+
+        clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+        clickHandlerRef.current.setInputAction((click: any) => {
+            const pickedObject = viewer.scene.pick(click.position);
+
+            if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
+                const entity = pickedObject.id as any;
+                if (onMarkerClick && entity._markerData) {
+                    onMarkerClick(entity.id, entity._markerData);
+                }
+            }
+        }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+        return () => {
+            if (clickHandlerRef.current) {
+                clickHandlerRef.current.destroy();
+                clickHandlerRef.current = null;
+            }
+        };
+    }, [onMarkerClick, viewerReadyRef.current]);
+
+    const handleResetView = () => {
+        const viewer = viewerRef.current?.cesiumElement;
+        if (!viewer) return;
+
+        viewer.camera.flyTo({
+            destination: Cartesian3.fromDegrees(
+                INITIAL_POSITION.lon,
+                INITIAL_POSITION.lat,
+                INITIAL_POSITION.height
+            ),
+            orientation: {
+                heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+                pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+                roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
+            },
+            duration: 2,
+        });
+    };
+
+    const toggleCategory = (category: string) => {
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category]
+        );
+    };
+
+    const toggleAllCategories = () => {
+        if (selectedCategories.length === allCategories.length) {
+            setSelectedCategories([]);
+        } else {
+            setSelectedCategories(allCategories);
+        }
+    };
+
+    if (!ION_TOKEN) {
+        return (
+            <div style={{ padding: "20px" }}>
+                <h2>Error: Missing Cesium Ion Token</h2>
+                <p>Please set NEXT_PUBLIC_CESIUM_ION_TOKEN in your .env.local file</p>
+            </div>
+        );
     }
 
     // Create new handler with current onMarkerClick
@@ -418,61 +488,138 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
   if (!ION_TOKEN) {
     return (
-      <div style={{ padding: '20px' }}>
-        <h2>Error: Missing Cesium Ion Token</h2>
-        <p>Please set NEXT_PUBLIC_CESIUM_ION_TOKEN in your .env.local file</p>
-      </div>
-    );
-  }
+        <div style={{ width: "100%", height: "100%", position: "relative" }}>
+            {/* Control Buttons */}
+            <div className="absolute top-4 left-4 z-50 flex gap-2">
+                <Button
+                    onClick={handleResetView}
+                    variant="outline"
+                    size="sm"
+                    className="bg-background/80 backdrop-blur-sm"
+                >
+                    <Home className="h-4 w-4 mr-2" />
+                    Reset View
+                </Button>
 
-  return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Loading Screen Overlay */}
-      {isLoading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: '#028174',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            transition: 'opacity 0.5s ease-out',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#ffe3b3',
-              marginBottom: '2rem',
-            }}
-          >
-            Loading Map
-          </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-background/80 backdrop-blur-sm"
+                        >
+                            <Filter className="h-4 w-4 mr-2" />
+                            Filter ({selectedCategories.length}/{allCategories.length})
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                        <DropdownMenuCheckboxItem
+                            checked={selectedCategories.length === allCategories.length}
+                            onCheckedChange={toggleAllCategories}
+                        >
+                            <span className="font-semibold">All Categories</span>
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuSeparator />
+                        {allCategories.map((category) => (
+                            <DropdownMenuCheckboxItem
+                                key={category}
+                                checked={selectedCategories.includes(category)}
+                                onCheckedChange={() => toggleCategory(category)}
+                            >
+                                {category}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                        {allCategories.length === 0 && (
+                            <DropdownMenuItem disabled>
+                                No categories found
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
 
-          <div
-            style={{
-              width: '300px',
-              height: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              marginBottom: '1rem',
-            }}
-          >
-            <div
-              style={{
-                width: `${loadingProgress}%`,
-                height: '100%',
-                backgroundColor: '#ff4958',
-                transition: 'width 0.3s ease-out',
-              }}
+            {/* Loading Screen Overlay */}
+            {isLoading && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: "#028174",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 9999,
+                        transition: "opacity 0.5s ease-out",
+                    }}
+                >
+                    <div
+                        style={{
+                            fontSize: "2rem",
+                            fontWeight: "bold",
+                            color: "#ffe3b3",
+                            marginBottom: "2rem",
+                        }}
+                    >
+                        Loading Map
+                    </div>
+
+                    <div
+                        style={{
+                            width: "300px",
+                            height: "8px",
+                            backgroundColor: "rgba(255, 255, 255, 0.1)",
+                            borderRadius: "4px",
+                            overflow: "hidden",
+                            marginBottom: "1rem",
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: `${loadingProgress}%`,
+                                height: "100%",
+                                backgroundColor: "#ff4958",
+                                transition: "width 0.3s ease-out",
+                            }}
+                        />
+                    </div>
+
+                    <div
+                        style={{
+                            color: "rgba(255, 255, 255, 0.7)",
+                            fontSize: "0.9rem",
+                        }}
+                    >
+                        {loadingMessage}
+                    </div>
+
+                    <div
+                        style={{
+                            color: "#ffe3b3",
+                            fontSize: "1.5rem",
+                            marginTop: "1rem",
+                            fontWeight: "bold",
+                        }}
+                    >
+                        {loadingProgress}%
+                    </div>
+                </div>
+            )}
+
+            <Viewer
+                ref={viewerRef}
+                full
+                baseLayerPicker={false}
+                timeline={false}
+                animation={false}
+                geocoder={false}
+                homeButton={false}
+                navigationHelpButton={false}
+                sceneModePicker={false}
+                infoBox={false}
             />
           </div>
 
