@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -12,12 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, X } from "lucide-react";
-import { SidebarMenuButton } from "./ui/sidebar";
-import { Textarea } from "./ui/textarea";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Plus, X, Calendar as CalendarIcon } from 'lucide-react';
+import { SidebarMenuButton } from './ui/sidebar';
+import { Textarea } from './ui/textarea';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Select,
   SelectContent,
@@ -26,13 +32,24 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { DateTimePicker } from "./date-time-picker";
-import { CommunityEvent, communityEventConverter, EventTypes, getEventTypeFilename } from "@/lib/firebaseEvents";
-import { auth, db } from "@/lib/firebaseClient";
-import { onAuthStateChanged, User } from "@firebase/auth";
-import { collection, doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
-import { redirect, RedirectType } from "next/navigation";
+} from '@/components/ui/select';
+import { DateTimePicker } from './date-time-picker';
+import {
+  CommunityEvent,
+  communityEventConverter,
+  EventTypes,
+  getEventTypeFilename,
+} from '@/lib/firebaseEvents';
+import { auth, db } from '@/lib/firebaseClient';
+import { onAuthStateChanged, User } from '@firebase/auth';
+import {
+  collection,
+  doc,
+  getDoc,
+  getFirestore,
+  setDoc,
+} from 'firebase/firestore';
+import { redirect, RedirectType } from 'next/navigation';
 
 type NominatimResult = {
   display_name: string;
@@ -41,19 +58,22 @@ type NominatimResult = {
 };
 
 export function EventDialog() {
-  const [address, setAddress] = useState("");
-  const [debouncedAddress, setDebouncedAddress] = useState("");
+  const [address, setAddress] = useState('');
+  const [debouncedAddress, setDebouncedAddress] = useState('');
   const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
-  const [addressError, setAddressError] = useState("");
+  const [lat, setLat] = useState('');
+  const [lon, setLon] = useState('');
+  const [addressError, setAddressError] = useState('');
 
   const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
   const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState("");
+  const [newTag, setNewTag] = useState('');
+  const [eventDate, setEventDate] = useState<Date | undefined>(undefined);
+  const [startTime, setStartTime] = useState('10:30');
+  const [endTime, setEndTime] = useState('');
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -86,7 +106,7 @@ export function EventDialog() {
     setLat(result.lat);
     setLon(result.lon);
     setIsAddressOpen(false);
-    setAddressError("");
+    setAddressError('');
   };
 
   useEffect(() => {
@@ -97,14 +117,14 @@ export function EventDialog() {
         return;
       }
 
-      const userRef = doc(db, "Users", firebaseUser.uid);
+      const userRef = doc(db, 'Users', firebaseUser.uid);
       const snap = await getDoc(userRef);
 
       if (snap.exists()) {
         const data = snap.data() as { Username?: string };
-        setUsername(data.Username || firebaseUser.displayName || "");
+        setUsername(data.Username || firebaseUser.displayName || '');
       } else {
-        setUsername(firebaseUser.displayName || "");
+        setUsername(firebaseUser.displayName || '');
       }
 
       setLoading(false);
@@ -112,15 +132,15 @@ export function EventDialog() {
 
     return () => unsub();
   }, []);
-    
+
   // -----------------------
   // SUBMIT HANDLER
   // -----------------------
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    if (!user || loading) return
+    if (!user || loading) return;
 
     e.preventDefault();
-    setAddressError("");
+    setAddressError('');
 
     // If no lat/lon, re-fetch to validate
     if (!lat || !lon) {
@@ -132,7 +152,7 @@ export function EventDialog() {
       const results: NominatimResult[] = await res.json();
 
       if (!results || results.length === 0) {
-        setAddressError("Address not found. Please select a valid address.");
+        setAddressError('Address not found. Please select a valid address.');
         return;
       }
 
@@ -142,18 +162,24 @@ export function EventDialog() {
 
     const form = new FormData(e.currentTarget);
 
-    const name = form.get("name")!.toString();
-    const description = form.get("description")!.toString();
-    const category = form.get("category") as EventTypes;
+    const name = form.get('name')!.toString();
+    const description = form.get('description')!.toString();
+    const category = form.get('category') as EventTypes;
     const model = getEventTypeFilename(category);
-    const locationStr = form.get("address")!.toString();
-    const dateStr = form.get("date")!.toString();
-    const startStr = form.get("startTime")!.toString();
-    const endStr = form.get("endTime")!.toString();
-    const image = form.get("image")!.toString();
+    const locationStr = form.get('address')!.toString();
+    const image = form.get('image')!.toString();
 
-    const startDate = new Date(`${dateStr}T${startStr}`);
-    const endTime = endStr ? new Date(`${dateStr}T${endStr}`) : undefined;
+    if (!eventDate) {
+      alert('Please select a date');
+      return;
+    }
+
+    const startDate = new Date(
+      `${eventDate.toISOString().split('T')[0]}T${startTime}`
+    );
+    const endDateTime = endTime
+      ? new Date(`${eventDate.toISOString().split('T')[0]}T${endTime}`)
+      : undefined;
 
     // Hardcode temporarily (replace with auth)
     const owner = user?.uid;
@@ -173,45 +199,47 @@ export function EventDialog() {
       image,
       model,
       tags,
-      endTime
+      endDateTime
     );
 
-    console.log("EVENT OBJECT:", event);
+    console.log('EVENT OBJECT:', event);
 
     const db = getFirestore();
-    await setDoc(doc(db, "Events", event.id).withConverter(communityEventConverter), event);
-    
+    await setDoc(
+      doc(db, 'Events', event.id).withConverter(communityEventConverter),
+      event
+    );
+
     window.location.reload();
   };
-  
+
   if (loading) {
-    return (<p>Loading...</p>);
+    return <p>Loading...</p>;
   }
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <SidebarMenuButton>
-          <Plus />
-          <span>Create new event</span>
-        </SidebarMenuButton>
+        <Button className="bg-[#028174] hover:bg-[#026d60] text-white font-medium">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Event
+        </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create new event</DialogTitle>
+            <DialogTitle>Create New Event</DialogTitle>
             <DialogDescription>
-              Schedule a new event in your community.
+              Schedule a new community event
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-5">
-
+          <div className="grid gap-5 mt-4">
             {/* Event Name */}
             <div className="grid gap-2">
               <Label>Name</Label>
-              <Input name="name" placeholder="Cleanup in the Park" required />
+              <Input name="name" placeholder="Community Cleanup" required />
             </div>
 
             {/* Description */}
@@ -234,9 +262,15 @@ export function EventDialog() {
                 <SelectContent>
                   <SelectGroup>
                     <SelectLabel>Category</SelectLabel>
-                    <SelectItem value={EventTypes.VOLUNTEER.toString()}>Volunteering</SelectItem>
-                    <SelectItem value={EventTypes.SPORTS.toString()}>Sports</SelectItem>
-                    <SelectItem value={EventTypes.TUTORING.toString()}>Tutoring</SelectItem>
+                    <SelectItem value={EventTypes.VOLUNTEER.toString()}>
+                      Volunteering
+                    </SelectItem>
+                    <SelectItem value={EventTypes.SPORTS.toString()}>
+                      Sports
+                    </SelectItem>
+                    <SelectItem value={EventTypes.TUTORING.toString()}>
+                      Tutoring
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -248,13 +282,13 @@ export function EventDialog() {
               <div className="relative">
                 <Input
                   name="address"
-                  placeholder="2520 Osborn Dr, Ames, IA   (Geocoding by OpenStreetMaps)"
+                  placeholder="Enter location address..."
                   autoComplete="off"
                   value={address}
                   onChange={(e) => {
                     setAddress(e.target.value);
-                    setLat("");
-                    setLon("");
+                    setLat('');
+                    setLon('');
                   }}
                   onFocus={() => {
                     if (addressResults.length > 0) setIsAddressOpen(true);
@@ -263,7 +297,7 @@ export function EventDialog() {
                 />
 
                 {isAddressOpen && addressResults.length > 0 && (
-                  <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover shadow">
+                  <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover shadow-lg">
                     {addressResults.map((r, i) => (
                       <button
                         key={i}
@@ -282,75 +316,82 @@ export function EventDialog() {
               {addressError && (
                 <p className="text-sm text-red-500">{addressError}</p>
               )}
-
-              <input type="hidden" name="lat" value={lat} />
-              <input type="hidden" name="lon" value={lon} />
             </div>
 
             {/* Date + Time Picker */}
-            <DateTimePicker />
-            
-            {/* Tags */}
-            <div className="grid gap-2">
-              <Label>Tags</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a tag..."
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (newTag.trim() && !tags.includes(newTag.trim())) {
-                        setTags([...tags, newTag.trim()]);
-                        setNewTag("");
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (newTag.trim() && !tags.includes(newTag.trim())) {
-                      setTags([...tags, newTag.trim()]);
-                      setNewTag("");
-                    }
-                  }}
-                >
-                  Add
-                </Button>
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {tags.map((tag, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
+            <div className="grid gap-4">
+              <div className="flex flex-col gap-3">
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="justify-between font-normal"
                     >
-                      <span>{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => setTags(tags.filter((t) => t !== tag))}
-                        className="hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                      {eventDate
+                        ? eventDate.toLocaleDateString()
+                        : 'Select date'}
+                      <CalendarIcon className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={eventDate}
+                      onSelect={setEventDate}
+                      disabled={(date) =>
+                        date < new Date(new Date().setHours(0, 0, 0, 0))
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-3">
+                  <Label>Start Time</Label>
+                  <Input
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    className="bg-background"
+                  />
                 </div>
-              )}
+
+                <div className="flex flex-col gap-3">
+                  <Label>End Time</Label>
+                  <Input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="bg-background"
+                  />
+                </div>
+              </div>
             </div>
-            
-            <div className="grid gap-5">
+
+            {/* Hidden lat/lon fields */}
+            <input type="hidden" name="lat" value={lat} />
+            <input type="hidden" name="lon" value={lon} />
+
+            {/* Image URL */}
+            <div className="grid gap-2">
               <Label>Image URL</Label>
-              <Input name="image" placeholder="Image..." required />
+              <Input
+                name="image"
+                placeholder="https://example.com/image.jpg"
+                required
+              />
             </div>
           </div>
-          <DialogFooter className="mt-2">
+          <DialogFooter className="mt-6">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button type="submit">Create Event</Button>
+            <Button type="submit" className="bg-[#028174] hover:bg-[#026d60]">
+              Create Event
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

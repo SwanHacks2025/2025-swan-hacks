@@ -1,16 +1,20 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { CommunityEvent, getCommunityEvent } from '@/lib/firebaseEvents';
 import React from 'react';
 import { db } from '@/lib/firebaseClient';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Calendar, MapPin, User, Users } from 'lucide-react';
+import { useAuth } from '@/lib/firebaseAuth';
+import { SpotlightBackground } from '@/components/spotlight-background';
+import { toast } from 'sonner';
 
 export default function EventPage({
   params,
@@ -23,8 +27,13 @@ export default function EventPage({
   const [attendeeNames, setAttendeeNames] = useState<Map<string, string>>(
     new Map()
   );
+  const { user } = useAuth();
+  const router = useRouter();
 
   const { eventId } = React.use(params);
+
+  const isOwner = user?.uid === communityEvent?.owner;
+  const isAttending = user && communityEvent?.attendees?.includes(user.uid);
 
   useEffect(() => {
     getCommunityEvent(eventId)
@@ -92,6 +101,73 @@ export default function EventPage({
     fetchAttendeeNames();
   }, [communityEvent?.attendees]);
 
+  const handleRSVP = async (isUnRSVP = false) => {
+    if (!user || !communityEvent) {
+      toast.error('Please sign in to RSVP to events');
+      return;
+    }
+
+    if (isOwner) {
+      toast.error('You are the organizer of this event!');
+      return;
+    }
+
+    const isCurrentlyAttending = communityEvent.attendees?.includes(user.uid);
+
+    if (isCurrentlyAttending && !isUnRSVP) {
+      toast.error('You are already attending this event!');
+      return;
+    }
+
+    if (!isCurrentlyAttending && isUnRSVP) {
+      toast.error('You are not attending this event!');
+      return;
+    }
+
+    try {
+      const eventRef = doc(db, 'Events', communityEvent.id);
+      const userRef = doc(db, 'Users', user.uid);
+
+      if (isUnRSVP) {
+        const updatedAttendees =
+          communityEvent.attendees?.filter((id: string) => id !== user.uid) ||
+          [];
+        await updateDoc(eventRef, {
+          attendees: updatedAttendees,
+        });
+
+        await updateDoc(userRef, {
+          rsvpEvents: arrayRemove(communityEvent.id),
+        });
+
+        setEvents({
+          ...communityEvent,
+          attendees: updatedAttendees,
+        });
+
+        toast.success('Successfully removed RSVP!');
+      } else {
+        await updateDoc(eventRef, {
+          attendees: arrayUnion(user.uid),
+        });
+
+        await updateDoc(userRef, {
+          rsvpEvents: arrayUnion(communityEvent.id),
+        });
+
+        setEvents({
+          ...communityEvent,
+          attendees: [...(communityEvent.attendees || []), user.uid],
+        });
+
+        toast.success("Successfully RSVP'd to event!");
+      }
+    } catch (error) {
+      console.error('Error updating RSVP:', error);
+      toast.error('Failed to update RSVP. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center">
@@ -107,95 +183,22 @@ export default function EventPage({
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
       })
     : 'TBD';
 
+  const formattedTime = communityEvent.date
+    ? `${new Date(communityEvent.date).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })}${communityEvent.endTime ? ` - ${new Date(communityEvent.endTime).toLocaleTimeString('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+      })}` : ''}`
+    : '';
+
   return (
-    <div
-      className="spotlight-container relative"
-      style={{ minHeight: '100vh', height: '100vh' }}
-    >
-      {/* Spotlight Background Overlay */}
-      <div className="spotlight-overlay fixed inset-0 pointer-events-none z-0">
-        <motion.div
-          initial={{ x: 200, y: 100 }}
-          animate={{
-            x: [200, 400, 100, 200],
-            y: [100, 200, 50, 100],
-          }}
-          transition={{
-            duration: 18,
-            ease: 'easeInOut',
-            repeat: Infinity,
-            repeatType: 'reverse',
-          }}
-          className="spotlight spotlight-left absolute rounded-full will-change-transform"
-          style={{
-            width: '1000px',
-            height: '1000px',
-            filter: 'blur(100px)',
-            opacity: 0.35,
-            background:
-              'radial-gradient(circle, rgba(2, 129, 116, 0.15) 0%, rgba(2, 129, 116, 0.1) 25%, rgba(2, 129, 116, 0.05) 50%, transparent 70%)',
-          }}
-        />
-
-        <motion.div
-          initial={{ x: '80%', y: '20%' }}
-          animate={{
-            x: ['80%', '60%', '90%', '80%'],
-            y: ['20%', '40%', '10%', '20%'],
-          }}
-          transition={{
-            duration: 22,
-            ease: 'easeInOut',
-            repeat: Infinity,
-            repeatType: 'reverse',
-            delay: 1.5,
-          }}
-          className="spotlight spotlight-mid absolute rounded-full will-change-transform"
-          style={{
-            width: '1000px',
-            height: '1000px',
-            filter: 'blur(100px)',
-            opacity: 0.35,
-            background:
-              'radial-gradient(circle, rgba(10, 182, 139, 0.15) 0%, rgba(10, 182, 139, 0.1) 25%, rgba(10, 182, 139, 0.05) 50%, transparent 70%)',
-          }}
-        />
-
-        <motion.div
-          initial={{ x: 100, y: 300 }}
-          animate={{
-            x: [100, -100, 300, 100],
-            y: [300, 500, 200, 300],
-          }}
-          transition={{
-            duration: 20,
-            ease: 'easeInOut',
-            repeat: Infinity,
-            repeatType: 'reverse',
-            delay: 3,
-          }}
-          className="spotlight spotlight-right absolute rounded-full will-change-transform"
-          style={{
-            width: '1000px',
-            height: '1000px',
-            filter: 'blur(100px)',
-            opacity: 0.35,
-            background:
-              'radial-gradient(circle, rgba(255, 227, 179, 0.2) 0%, rgba(255, 227, 179, 0.12) 25%, rgba(255, 227, 179, 0.06) 50%, transparent 70%)',
-          }}
-        />
-      </div>
-
-      {/* Content with proper z-index to overlap background */}
-      <main
-        className="relative z-10 pt-20 md:pt-28 pb-4 md:pb-8 px-3 md:px-6 flex flex-col w-full"
-        style={{ minHeight: '100vh', height: '100vh' }}
-      >
+    <SpotlightBackground>
+      <main className="min-h-screen pt-20 md:pt-28 pb-8 px-4 md:px-6">
         <div className="max-w-4xl mx-auto w-full flex-1 flex gap-3 md:gap-6 min-h-0 overflow-y-auto">
           {/* Single Floating Island Container */}
           <div className="bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg p-4 md:p-6 relative z-20 w-full">
@@ -236,12 +239,19 @@ export default function EventPage({
             <Separator className="my-4 md:my-6" />
 
             {/* Info Grid - Compact */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
               <InfoBlock
                 label="Date"
                 value={formattedDate}
                 icon={<Calendar className="w-3.5 h-3.5" />}
               />
+              {formattedTime && (
+                <InfoBlock
+                  label="Time"
+                  value={formattedTime}
+                  icon={<Calendar className="w-3.5 h-3.5" />}
+                />
+              )}
               <InfoBlock
                 label="Location"
                 value={communityEvent.location}
@@ -253,6 +263,86 @@ export default function EventPage({
                 icon={<User className="w-3.5 h-3.5" />}
               />
             </div>
+
+            <Separator className="my-4 md:my-6" />
+
+            {/* Action Buttons */}
+            {user && (
+              <div className="flex flex-col gap-3 mb-6">
+                {isOwner ? (
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 bg-[#ffe3b3] text-[#028174] hover:bg-[#ffd89d] font-semibold"
+                      disabled
+                    >
+                      Your Event
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/map?event=${communityEvent.id}`)}
+                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                    >
+                      <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
+                      View on Map
+                    </Button>
+                  </div>
+                ) : isAttending ? (
+                  <>
+                    <div className="flex gap-2">
+                      <Button
+                        className="flex-1 bg-[#028174] hover:bg-[#026d60] text-white font-semibold"
+                        disabled
+                      >
+                        ✓ Attending
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => router.push(`/map?event=${communityEvent.id}`)}
+                        className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                      >
+                        <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
+                        View on Map
+                      </Button>
+                    </div>
+                    <Button
+                      onClick={() => handleRSVP(true)}
+                      variant="outline"
+                      className="w-full font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                    >
+                      Remove RSVP
+                    </Button>
+                  </>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={() => handleRSVP(false)}
+                      className="flex-1 bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold"
+                    >
+                      RSVP to Event
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push(`/map?event=${communityEvent.id}`)}
+                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                    >
+                      <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
+                      View on Map
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!user && (
+              <div className="mb-6">
+                <Button
+                  onClick={() => toast.error('Please sign in to RSVP to events')}
+                  className="w-full bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold"
+                >
+                  Sign in to RSVP
+                </Button>
+              </div>
+            )}
 
             <Separator className="my-4 md:my-6" />
 
@@ -286,7 +376,7 @@ export default function EventPage({
           </div>
         </div>
       </main>
-    </div>
+    </SpotlightBackground>
   );
 }
 

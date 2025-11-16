@@ -7,6 +7,7 @@ import './globals.css';
 import { AuthProvider } from '@/lib/firebaseAuth';
 import { LayoutClient } from '@/components/layout-client';
 import { Footer } from '@/components/footer';
+import { Toaster } from '@/components/ui/sonner';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -54,6 +55,7 @@ export default function RootLayout({
           <AuthProvider>
             <LayoutClient>{children}</LayoutClient>
             <Footer />
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

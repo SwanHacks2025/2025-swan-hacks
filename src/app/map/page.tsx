@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import dynamic from 'next/dynamic';
 import { X, Calendar as CalendarIcon, Home, Filter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MapLoadingScreen } from '@/components/MapLoadingScreen';
 import {
   Popover,
   PopoverContent,
@@ -13,7 +14,14 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { auth, db } from '@/lib/firebaseClient';
 import { onAuthStateChanged, User } from '@firebase/auth';
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import {
+  doc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+  getDoc,
+} from 'firebase/firestore';
+import { toast } from 'sonner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +38,7 @@ const CesiumMap = dynamic(() => import('@/components/CesiumMap'), {
   loading: () => <div>Loading Cesium...</div>,
 });
 
-export default function MapPage() {
+function MapPageContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -38,7 +46,10 @@ export default function MapPage() {
   const [hostName, setHostName] = useState<string>('');
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
-  const [initialPosition, setInitialPosition] = useState<{lat: number; lon: number} | null>(null);
+  const [initialPosition, setInitialPosition] = useState<{
+    lat: number;
+    lon: number;
+  } | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const mapRef = useRef<CesiumMapRef>(null);
   const searchParams = useSearchParams();
@@ -64,11 +75,19 @@ export default function MapPage() {
             const eventData = { id: eventSnap.id, ...eventSnap.data() };
 
             console.log('Fetched event data:', eventData);
-            console.log('Event lat:', (eventData as any).lat, 'long:', (eventData as any).long);
+            console.log(
+              'Event lat:',
+              (eventData as any).lat,
+              'long:',
+              (eventData as any).long
+            );
 
             // Set initial position for map to use (using correct field names: lat and long)
             if ((eventData as any).lat && (eventData as any).long) {
-              const newPosition = { lat: (eventData as any).lat, lon: (eventData as any).long };
+              const newPosition = {
+                lat: (eventData as any).lat,
+                lon: (eventData as any).long,
+              };
               console.log('Setting initialPosition to:', newPosition);
               setInitialPosition(newPosition);
             } else {
@@ -76,7 +95,7 @@ export default function MapPage() {
             }
 
             setSelectedMarker(eventData);
-            setSidebarOpen(true);
+            // Don't open sidebar yet - wait for map to load
           }
         } catch (error) {
           console.error('Error fetching event:', error);
@@ -93,6 +112,17 @@ export default function MapPage() {
       setMapReady(true);
     }
   }, [searchParams, router]);
+
+  // Open sidebar after a delay when selectedMarker is set and map is ready
+  useEffect(() => {
+    if (selectedMarker && mapReady) {
+      // Wait a bit for the map to fully render, then open sidebar
+      const timer = setTimeout(() => {
+        setSidebarOpen(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedMarker, mapReady]);
 
   // Fetch host name when selectedMarker changes
   useEffect(() => {
@@ -128,13 +158,13 @@ export default function MapPage() {
 
   const handleRSVP = async (isUnRSVP = false) => {
     if (!user || !selectedMarker) {
-      alert('Please sign in to RSVP to events');
+      toast.error('Please sign in to RSVP to events');
       return;
     }
 
     // Check if user is the owner
     if (selectedMarker.owner === user.uid) {
-      alert('You are the organizer of this event!');
+      toast.error('You are the organizer of this event!');
       return;
     }
 
@@ -142,13 +172,13 @@ export default function MapPage() {
 
     // If already attending and not trying to un-RSVP, show message
     if (isAttending && !isUnRSVP) {
-      alert('You are already attending this event!');
+      toast.error('You are already attending this event!');
       return;
     }
 
     // If not attending and trying to un-RSVP, show message
     if (!isAttending && isUnRSVP) {
-      alert('You are not attending this event!');
+      toast.error('You are not attending this event!');
       return;
     }
 
@@ -176,7 +206,7 @@ export default function MapPage() {
           attendees: updatedAttendees,
         });
 
-        alert('Successfully removed RSVP!');
+        toast.success('Successfully removed RSVP!');
       } else {
         // Add user to attendees
         await updateDoc(eventRef, {
@@ -194,11 +224,11 @@ export default function MapPage() {
           attendees: [...(selectedMarker.attendees || []), user.uid],
         });
 
-        alert("Successfully RSVP'd to event!");
+        toast.success("Successfully RSVP'd to event!");
       }
     } catch (error) {
       console.error('Error updating RSVP:', error);
-      alert('Failed to update RSVP. Please try again.');
+      toast.error('Failed to update RSVP. Please try again.');
     }
   };
 
@@ -237,9 +267,12 @@ export default function MapPage() {
   return (
     <main className="flex flex-col h-screen">
       <div className="flex flex-1 relative overflow-hidden bg-gradient-to-br from-[#028174]/10 via-background to-[#028174]/5">
+        {/* Loading screen while preparing map */}
+        {!mapReady && <MapLoadingScreen isLoading={true} />}
+
         {/* Map section (always full width) */}
         <div className="w-full h-full">
-          {mapReady ? (
+          {mapReady && (
             <CesiumMap
               ref={mapRef}
               onMarkerClick={handleMarkerClick}
@@ -248,17 +281,6 @@ export default function MapPage() {
               onCategoriesChange={handleCategoriesChange}
               initialPosition={initialPosition}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-[#028174]">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-[#ffe3b3] mb-2">
-                  Loading Map
-                </div>
-                <div className="text-sm text-white/70">
-                  Preparing your view...
-                </div>
-              </div>
-            </div>
           )}
         </div>
 
@@ -376,12 +398,12 @@ export default function MapPage() {
         <AnimatePresence>
           {sidebarOpen && (
             <motion.div
-              initial={{ x: 400, opacity: 0 }}
+              initial={{ x: -400, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 400, opacity: 0 }}
+              exit={{ x: -400, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 160, damping: 22 }}
               className="
-                            absolute top-20 right-4
+                            absolute top-20 left-4
                             max-h-[calc(100vh-6rem)] w-[360px]
                             rounded-2xl backdrop-blur-xl
                             bg-background/70 border border-border
@@ -450,10 +472,40 @@ export default function MapPage() {
                             {new Date(selectedMarker.date).toLocaleDateString(
                               'en-US',
                               {
-                                month: 'short',
-                                day: 'numeric',
+                                weekday: 'long',
                                 year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
                               }
+                            )}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedMarker.date && (
+                        <div className="bg-muted/30 rounded-lg p-3">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                            Time
+                          </p>
+                          <p className="font-semibold text-sm text-foreground">
+                            {new Date(selectedMarker.date).toLocaleTimeString(
+                              'en-US',
+                              {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              }
+                            )}
+                            {selectedMarker.endTime && (
+                              <>
+                                {' '}
+                                -{' '}
+                                {new Date(
+                                  selectedMarker.endTime
+                                ).toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                })}
+                              </>
                             )}
                           </p>
                         </div>
@@ -563,5 +615,13 @@ export default function MapPage() {
         </AnimatePresence>
       </div>
     </main>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={<MapLoadingScreen isLoading={true} />}>
+      <MapPageContent />
+    </Suspense>
   );
 }

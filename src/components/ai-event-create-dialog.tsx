@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogClose,
@@ -10,10 +10,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "./ui/textarea";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from './ui/textarea';
 import {
   Select,
   SelectContent,
@@ -22,13 +22,18 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { DateTimePicker } from "./date-time-picker";
-import { CommunityEvent, communityEventConverter, EventTypes } from "@/lib/firebaseEvents";
-import { auth, db } from "@/lib/firebaseClient";
-import { onAuthStateChanged, User } from "@firebase/auth";
-import { doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
-import { GeminiEventResult } from "@/app/api/gemini/search/route";
+} from '@/components/ui/select';
+import { DateTimePicker } from './date-time-picker';
+import {
+  CommunityEvent,
+  communityEventConverter,
+  EventTypes,
+  getEventTypeFilename,
+} from '@/lib/firebaseEvents';
+import { auth, db } from '@/lib/firebaseClient';
+import { onAuthStateChanged, User } from '@firebase/auth';
+import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+import { GeminiEventResult } from '@/app/api/gemini/search/route';
 
 type NominatimResult = {
   display_name: string;
@@ -47,13 +52,13 @@ export function AIEventCreateDialog({
   onOpenChange,
   eventData,
 }: AIEventCreateDialogProps) {
-  const [address, setAddress] = useState("");
-  const [debouncedAddress, setDebouncedAddress] = useState("");
+  const [address, setAddress] = useState('');
+  const [debouncedAddress, setDebouncedAddress] = useState('');
   const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
-  const [addressError, setAddressError] = useState("");
+  const [lat, setLat] = useState('');
+  const [lon, setLon] = useState('');
+  const [addressError, setAddressError] = useState('');
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,9 +67,9 @@ export function AIEventCreateDialog({
   const mapCategoryToEventType = (category?: string): EventTypes => {
     if (!category) return EventTypes.VOLUNTEER;
     const catLower = category.toLowerCase();
-    if (catLower.includes("volunteer")) return EventTypes.VOLUNTEER;
-    if (catLower.includes("sport")) return EventTypes.SPORTS;
-    if (catLower.includes("tutor")) return EventTypes.TUTORING;
+    if (catLower.includes('volunteer')) return EventTypes.VOLUNTEER;
+    if (catLower.includes('sport')) return EventTypes.SPORTS;
+    if (catLower.includes('tutor')) return EventTypes.TUTORING;
     return EventTypes.VOLUNTEER;
   };
 
@@ -87,7 +92,7 @@ export function AIEventCreateDialog({
   // Initialize form with AI data when dialog opens
   useEffect(() => {
     if (isOpen && eventData) {
-      setAddress(eventData.location || "");
+      setAddress(eventData.location || '');
       // Try to geocode the location immediately
       if (eventData.location) {
         fetch(
@@ -138,7 +143,7 @@ export function AIEventCreateDialog({
     setLat(result.lat);
     setLon(result.lon);
     setIsAddressOpen(false);
-    setAddressError("");
+    setAddressError('');
   };
 
   useEffect(() => {
@@ -152,10 +157,10 @@ export function AIEventCreateDialog({
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setAddressError("");
+    setAddressError('');
 
     if (!user) {
-      setAddressError("You must be logged in to create an event.");
+      setAddressError('You must be logged in to create an event.');
       return;
     }
 
@@ -169,7 +174,7 @@ export function AIEventCreateDialog({
       const results: NominatimResult[] = await res.json();
 
       if (!results || results.length === 0) {
-        setAddressError("Address not found. Please select a valid address.");
+        setAddressError('Address not found. Please select a valid address.');
         return;
       }
 
@@ -179,13 +184,15 @@ export function AIEventCreateDialog({
 
     const form = new FormData(e.currentTarget);
 
-    const name = form.get("name")!.toString();
-    const description = form.get("description")!.toString();
-    const category = (form.get("category") as EventTypes) || mapCategoryToEventType(eventData.category);
-    const locationStr = form.get("address")!.toString();
-    const dateStr = form.get("date")!.toString();
-    const startStr = form.get("startTime")!.toString();
-    const endStr = form.get("endTime")!.toString();
+    const name = form.get('name')!.toString();
+    const description = form.get('description')!.toString();
+    const category =
+      (form.get('category') as EventTypes) ||
+      mapCategoryToEventType(eventData.category);
+    const locationStr = form.get('address')!.toString();
+    const dateStr = form.get('date')!.toString();
+    const startStr = form.get('startTime')!.toString();
+    const endStr = form.get('endTime')!.toString();
 
     const startDate = new Date(`${dateStr}T${startStr}`);
     const endDate = new Date(`${dateStr}T${endStr}`);
@@ -203,18 +210,25 @@ export function AIEventCreateDialog({
       locationStr,
       startDate,
       owner,
-      attendees
+      attendees,
+      '',
+      getEventTypeFilename(category),
+      [],
+      endDate
     );
 
     const db = getFirestore();
-    await setDoc(doc(db, "Events", event.id).withConverter(communityEventConverter), event);
+    await setDoc(
+      doc(db, 'Events', event.id).withConverter(communityEventConverter),
+      event
+    );
 
     // Close dialog and reset form
     onOpenChange(false);
     // Reset form state
-    setAddress("");
-    setLat("");
-    setLon("");
+    setAddress('');
+    setLat('');
+    setLon('');
   };
 
   if (loading) {
@@ -271,8 +285,12 @@ export function AIEventCreateDialog({
                     <SelectItem value={EventTypes.VOLUNTEER.toString()}>
                       Volunteering
                     </SelectItem>
-                    <SelectItem value={EventTypes.SPORTS.toString()}>Sports</SelectItem>
-                    <SelectItem value={EventTypes.TUTORING.toString()}>Tutoring</SelectItem>
+                    <SelectItem value={EventTypes.SPORTS.toString()}>
+                      Sports
+                    </SelectItem>
+                    <SelectItem value={EventTypes.TUTORING.toString()}>
+                      Tutoring
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
@@ -289,8 +307,8 @@ export function AIEventCreateDialog({
                   value={address}
                   onChange={(e) => {
                     setAddress(e.target.value);
-                    setLat("");
-                    setLon("");
+                    setLat('');
+                    setLon('');
                   }}
                   onFocus={() => {
                     if (addressResults.length > 0) setIsAddressOpen(true);
@@ -344,16 +362,12 @@ export function AIEventCreateDialog({
                 />
               )}
               {!eventData.time && (
-                <input
-                  type="hidden"
-                  name="startTime"
-                  defaultValue="10:00"
-                />
+                <input type="hidden" name="startTime" defaultValue="10:00" />
               )}
               <input
                 type="hidden"
                 name="endTime"
-                defaultValue={eventData.time ? eventData.time : "11:00"}
+                defaultValue={eventData.time ? eventData.time : '11:00'}
               />
             </div>
           </div>
@@ -369,4 +383,3 @@ export function AIEventCreateDialog({
     </Dialog>
   );
 }
-

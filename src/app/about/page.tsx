@@ -34,6 +34,7 @@ const creators = [
   {
     name: ' Cai Chen',
     avatar: 'https://avatars.githubusercontent.com/u/145074700',
+    bio: 'Software Engineer',
     socials: {
       github: 'https://github.com/achen2304',
       linkedin: 'https://www.linkedin.com/in/achen2304/',
@@ -42,6 +43,7 @@ const creators = [
   {
     name: 'Mieszko Muskala',
     avatar: 'https://avatars.githubusercontent.com/u/92417405',
+    bio: 'Software Engineer',
     socials: {
       github: 'https://github.com/MMoose16',
       linkedin: 'https://www.linkedin.com/in/mmuskala/',
@@ -50,6 +52,7 @@ const creators = [
   {
     name: 'Sean Krueger',
     avatar: 'https://avatars.githubusercontent.com/u/71362472',
+    bio: 'Software Engineer',
     socials: {
       github: 'https://github.com/seakrueger',
       linkedin: 'https://www.linkedin.com/in/seankru/',
@@ -58,11 +61,12 @@ const creators = [
   {
     name: 'Josh Arceo ',
     avatar: 'https://avatars.githubusercontent.com/u/17519123',
+    bio: 'Software Engineer',
     socials: {
       github: 'https://github.com/JoshuaArceo',
       linkedin: 'https://www.linkedin.com/in/joshuaarceo/',
     },
-  }
+  },
 ];
 
 // EDITABLE FAQ DATA
@@ -90,8 +94,8 @@ const faqs = [
   {
     question: 'Where is the map data from?',
     answer:
-      "Our map data is provided by Google Maps, with tiling done by Cesium. Geocoding and address lookup is done by OpenStreetMaps.",
-  }
+      'Our map data is provided by Google Maps, with tiling done by Cesium. Geocoding and address lookup is done by OpenStreetMaps.',
+  },
 ];
 
 export default function AboutPage() {
@@ -225,10 +229,10 @@ export default function AboutPage() {
               easy to find your people and do what you love together.
             </p>
             <p>
-              Today, we're proud to help people rediscover the joy
-              of in-person connection. Every event created, every community
-              formed, and every friendship made on our platform reminds us why
-              we started this journey. 
+              Today, we're proud to help people rediscover the joy of in-person
+              connection. Every event created, every community formed, and every
+              friendship made on our platform reminds us why we started this
+              journey.
             </p>
           </motion.div>
         </div>
@@ -250,7 +254,8 @@ export default function AboutPage() {
               Meet the Creators
             </h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-              The passionate team behind Gather Point, dedicated to bringing communities together.
+              The passionate team behind Gather Point, dedicated to bringing
+              communities together.
             </p>
           </motion.div>
 
@@ -278,12 +283,12 @@ export default function AboutPage() {
                     </div>
                     <CardTitle className="text-xl">{creator.name}</CardTitle>
                     <CardDescription className="text-primary font-medium">
-                      {creator.role}
+                      {creators[index].name}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <p className="text-muted-foreground text-sm text-center">
-                      {creator.bio}
+                      {creators[index]?.bio || ''}
                     </p>
                     <div className="flex justify-center gap-3">
                       {creator.socials.github && (
@@ -317,23 +322,6 @@ export default function AboutPage() {
                             aria-label="LinkedIn"
                           >
                             <Linkedin className="h-5 w-5" />
-                          </a>
-                        </Button>
-                      )}
-                      {creator.socials.twitter && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          asChild
-                          className="hover:text-primary cursor-pointer"
-                        >
-                          <a
-                            href={creator.socials.twitter}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label="Twitter"
-                          >
-                            <Twitter className="h-5 w-5" />
                           </a>
                         </Button>
                       )}

@@ -5,6 +5,7 @@ import { db, auth } from '@/lib/firebaseClient';
 
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { toast } from 'sonner';
 
 import {
   CommunityEvent,
@@ -15,6 +16,7 @@ import {
 } from '@/lib/firebaseEvents';
 import { suggestEvents } from '@/lib/geminiSuggestService';
 import { EventCard } from '@/components/event-card';
+import { EventDialog } from '@/components/event-create';
 import { useEventFilter } from '@/context/EventFilterContext';
 import { Button } from '@/components/ui/button';
 import { Filter, Plus, X, CalendarIcon, Search } from 'lucide-react';
@@ -297,7 +299,7 @@ export default function EventPage() {
 
   const handleRSVP = async (eventId: string, isUnRSVP = false) => {
     if (!user) {
-      alert('Please sign in to RSVP to events');
+      toast.error('Please sign in to RSVP to events');
       return;
     }
 
@@ -306,7 +308,7 @@ export default function EventPage() {
 
     // Check if user is the owner
     if (event.owner === user.uid) {
-      alert('You are the organizer of this event!');
+      toast.error('You are the organizer of this event!');
       return;
     }
 
@@ -314,13 +316,13 @@ export default function EventPage() {
 
     // If already attending and not trying to un-RSVP, show message
     if (isAttending && !isUnRSVP) {
-      alert('You are already attending this event!');
+      toast.error('You are already attending this event!');
       return;
     }
 
     // If not attending and trying to un-RSVP, show message
     if (!isAttending && isUnRSVP) {
-      alert('You are not attending this event!');
+      toast.error('You are not attending this event!');
       return;
     }
 
@@ -348,7 +350,7 @@ export default function EventPage() {
           )
         );
 
-        alert('Successfully removed RSVP!');
+        toast.success('Successfully removed RSVP!');
       } else {
         // Add user to attendees
         await updateDoc(eventRef, {
@@ -369,14 +371,14 @@ export default function EventPage() {
           )
         );
 
-        alert("Successfully RSVP'd to event!");
-        
+        toast.success("Successfully RSVP'd to event!");
+
         // Refresh suggested events after RSVP
         fetchSuggestedEvents();
       }
     } catch (error) {
       console.error('Error updating RSVP:', error);
-      alert('Failed to update RSVP. Please try again.');
+      toast.error('Failed to update RSVP. Please try again.');
     }
   };
 
@@ -525,15 +527,17 @@ export default function EventPage() {
                     <Label className="text-sm font-semibold mb-3 block">
                       Date Range
                     </Label>
-                    <Calendar
-                      mode="range"
-                      selected={dateRange}
-                      onSelect={setDateRange}
-                      disabled={(date) =>
-                        date < new Date(new Date().setHours(0, 0, 0, 0))
-                      }
-                      className="rounded-md border"
-                    />
+                    <div className="flex justify-center">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={setDateRange}
+                        disabled={(date) =>
+                          date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }
+                        className="rounded-md border w-full"
+                      />
+                    </div>
                     {dateRange?.from && (
                       <Button
                         variant="ghost"

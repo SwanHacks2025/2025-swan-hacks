@@ -1,31 +1,34 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Search, Loader2, MapPin, Calendar, Sparkles } from "lucide-react";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Search, Loader2, MapPin, Calendar, Sparkles } from 'lucide-react';
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarSeparator,
-} from "@/components/ui/sidebar";
-import { searchEvents, GeminiEventResult } from "@/lib/geminiService";
-import { AIEventCreateDialog } from "./ai-event-create-dialog";
+} from '@/components/ui/sidebar';
+import { GeminiEventResult } from '@/app/api/gemini/search/route';
+import { AIEventCreateDialog } from './ai-event-create-dialog';
+import { searchEvents } from '@/lib/geminiService';
 
 export function AIEventSearch() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [location, setLocation] = useState("");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [location, setLocation] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<GeminiEventResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<GeminiEventResult | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<GeminiEventResult | null>(
+    null
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      setError("Please enter a search query");
+      setError('Please enter a search query');
       return;
     }
 
@@ -44,11 +47,13 @@ export function AIEventSearch() {
       } else {
         setResults(response.events);
         if (response.events.length === 0) {
-          setError("No events found. Try a different search query.");
+          setError('No events found. Try a different search query.');
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to search for events");
+      setError(
+        err instanceof Error ? err.message : 'Failed to search for events'
+      );
     } finally {
       setIsSearching(false);
     }
@@ -60,7 +65,7 @@ export function AIEventSearch() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && !isSearching) {
+    if (e.key === 'Enter' && !isSearching) {
       handleSearch();
     }
   };
@@ -121,7 +126,9 @@ export function AIEventSearch() {
           {results.length > 0 && (
             <div className="space-y-2">
               <SidebarSeparator className="mx-0" />
-              <div className="text-sm font-medium">Search Results ({results.length})</div>
+              <div className="text-sm font-medium">
+                Search Results ({results.length})
+              </div>
               <div className="max-h-96 space-y-2 overflow-y-auto">
                 {results.map((event, index) => (
                   <div
@@ -184,4 +191,3 @@ export function AIEventSearch() {
     </>
   );
 }
-

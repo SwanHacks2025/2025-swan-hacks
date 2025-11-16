@@ -16,6 +16,7 @@ import { User } from 'firebase/auth';
 import { db } from '@/lib/firebaseClient';
 import { doc, getDoc } from 'firebase/firestore';
 import { MapPin } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function EventCard({
   event,
@@ -69,25 +70,38 @@ export function EventCard({
             </h3>
             <p className="text-xs mt-1">{event.category}</p>
           </div>
-          {isOwner ? (
-            <Badge
-              variant="outline"
-              className="bg-[#ffe3b3]/30 text-[#028174] border-[#ffe3b3] text-xs"
+          <div className="flex items-center gap-1">
+            {isOwner ? (
+              <Badge
+                variant="outline"
+                className="bg-[#ffe3b3]/30 text-[#028174] border-[#ffe3b3] text-xs"
+              >
+                Organizing
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="bg-[#028174]/30 text-[#028174] border-[#028174] text-xs"
+              >
+                Going
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 hover:bg-[#028174]/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/map?event=${event.id}`);
+              }}
             >
-              Organizing
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="bg-[#028174]/30 text-[#028174] border-[#028174] text-xs"
-            >
-              Going
-            </Badge>
-          )}
+              <MapPin className="h-3.5 w-3.5 text-[#028174]" />
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-xs">
-            <span>Date:</span>
+          <div className="flex flex-col gap-0.5 text-xs">
+            <span className="text-muted-foreground">Date:</span>
             <span className="font-semibold text-foreground">
               {event.date
                 ? new Date(event.date).toLocaleDateString('en-US', {
@@ -96,6 +110,20 @@ export function EventCard({
                   })
                 : 'TBD'}
             </span>
+            {event.date && (
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(event.date).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+                {(event as any).endTime && (
+                  <> - {new Date((event as any).endTime).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}</>
+                )}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs">
             <span>Host:</span>
@@ -147,17 +175,36 @@ export function EventCard({
 
       {/* Info */}
       <div className="space-y-2 text-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-muted-foreground min-w-[60px]">Date:</span>
-          <span className="font-semibold text-foreground">
-            {event.date
-              ? new Date(event.date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : 'TBD'}
-          </span>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground min-w-[60px]">Date:</span>
+            <span className="font-semibold text-foreground">
+              {event.date
+                ? new Date(event.date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : 'TBD'}
+            </span>
+          </div>
+          {event.date && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground min-w-[60px]">Time:</span>
+              <span className="text-foreground text-xs">
+                {new Date(event.date).toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+                {(event as any).endTime && (
+                  <> - {new Date((event as any).endTime).toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}</>
+                )}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground min-w-[60px]">Host:</span>
@@ -267,7 +314,7 @@ export function EventCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                alert('Please sign in to RSVP to events');
+                toast.error('Please sign in to RSVP to events');
               }}
               className="flex-1 bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold cursor-pointer"
             >
