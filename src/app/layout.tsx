@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/context';
 import './globals.css';
 import { AuthProvider } from '@/lib/firebaseAuth';
 import { LayoutClient } from '@/components/layout-client';
+import { Footer } from '@/components/footer';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -38,6 +39,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <LayoutClient>{children}</LayoutClient>
+            <Footer />
           </AuthProvider>
         </ThemeProvider>
       </body>

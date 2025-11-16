@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { SpotlightBackground } from '@/components/spotlight-background';
+import { Footer } from '@/components/footer';
 import { ArrowRight, Users, Calendar, Sparkles, MapPin } from 'lucide-react';
 
 const fadeIn = {
@@ -279,6 +280,17 @@ export default function Home() {
                   asChild
                   variant="outline"
                   size="lg"
+                  className="text-base group"
+                >
+                  <Link href="/map" className="gap-2">
+                    Explore the Map
+                    <MapPin className="w-4 h-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
                   className="text-base"
                 >
                   <Link href="/about">Learn More</Link>
@@ -291,9 +303,6 @@ export default function Home() {
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/5 rounded-full blur-3xl" />
           </motion.div>
         </section>
-
-        {/* Bottom Padding */}
-        <div className="h-24" />
       </main>
     </SpotlightBackground>
   );
