@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Plus } from "lucide-react"
+import { Plus, Filter } from "lucide-react"
 
 import { EventFilters } from "@/components/event-filters"
 import { DatePicker } from "@/components/date-picker"
@@ -19,15 +19,20 @@ import { EventDialog } from "./event-create"
 export function EventSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
-      <SidebarHeader className="border-sidebar-border h-12 border-b">
-        <div className="font-bold align-text-bottom">Filters</div>
+      <SidebarHeader className="border-border/50 h-16 border-b bg-background/80 backdrop-blur-sm px-6">
+        <div className="flex items-center gap-2">
+          <Filter className="h-5 w-5 text-[#ff4958]" />
+          <h2 className="font-bold text-lg">Filters</h2>
+        </div>
       </SidebarHeader>
-      <SidebarContent>
-        <DatePicker />
-        <SidebarSeparator className="mx-0" />
-        <EventFilters />
+      <SidebarContent className="px-4">
+        <div className="space-y-6 py-6">
+          <DatePicker />
+          <SidebarSeparator className="mx-0 bg-border/50" />
+          <EventFilters />
+        </div>
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-border/50 bg-background/50 p-4">
         <SidebarMenu>
           <SidebarMenuItem>
             <EventDialog />

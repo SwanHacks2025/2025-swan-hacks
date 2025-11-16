@@ -52,7 +52,12 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
   }, []);
 
   // Show floating state when scrolled OR on specific pages
-  const isFloating = isScrolled || pathname === '/map' || pathname === '/friends' || pathname === '/profile';
+  const isFloating =
+    isScrolled ||
+    pathname === '/map' ||
+    pathname === '/friends' ||
+    pathname === '/profile' ||
+    pathname === '/events';
 
   // Load avatar the same way as ProfilePage
   React.useEffect(() => {

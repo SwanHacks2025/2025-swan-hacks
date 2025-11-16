@@ -1,7 +1,13 @@
 'use client';
 
 import '@/lib/cesium-setup';
-import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import {
+  useRef,
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from 'react';
 import { Viewer, CesiumComponentRef } from 'resium';
 import { fetchCommunityEvents, CommunityEvent } from '@/lib/firebaseEvents';
 import {
@@ -79,11 +85,13 @@ interface CesiumMapProps {
   dateRange?: { from?: Date; to?: Date };
   selectedCategories?: string[];
   onCategoriesChange?: (categories: string[]) => void;
+  initialPosition?: { lat: number; lon: number } | null;
 }
 
 export interface CesiumMapRef {
   resetView: () => void;
   getAllCategories: () => string[];
+  centerOnLocation: (lat: number, lon: number) => void;
 }
 
 // Initial camera position
@@ -97,7 +105,16 @@ const INITIAL_POSITION = {
 };
 
 const CesiumMap = forwardRef<CesiumMapRef, CesiumMapProps>(
-  ({ onMarkerClick, dateRange, selectedCategories = [], onCategoriesChange }, ref) => {
+  (
+    {
+      onMarkerClick,
+      dateRange,
+      selectedCategories = [],
+      onCategoriesChange,
+      initialPosition,
+    },
+    ref
+  ) => {
     const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
 
@@ -107,458 +124,500 @@ const CesiumMap = forwardRef<CesiumMapRef, CesiumMapProps>(
     const [loadingMessage, setLoadingMessage] = useState('Initializing map...');
     const [allCategories, setAllCategories] = useState<string[]>([]);
 
-  const markersLoadedRef = useRef(false);
-  const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
-  const postRenderListenerRef = useRef<(() => void) | null>(null);
-  const viewerReadyRef = useRef(false);
+    const markersLoadedRef = useRef(false);
+    const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
+    const postRenderListenerRef = useRef<(() => void) | null>(null);
+    const viewerReadyRef = useRef(false);
 
-  // Expose methods to parent component
-  useImperativeHandle(ref, () => ({
-    resetView: handleResetView,
-    getAllCategories: () => allCategories,
-  }));
+    // Expose methods to parent component
+    useImperativeHandle(ref, () => ({
+      resetView: handleResetView,
+      getAllCategories: () => allCategories,
+      centerOnLocation: handleCenterOnLocation,
+    }));
 
-  useEffect(() => {
-    if (ION_TOKEN) {
-      Ion.defaultAccessToken = ION_TOKEN;
-    }
-  }, [ION_TOKEN]);
-
-  useEffect(() => {
-    const initViewer = async () => {
-      if (!viewerRef.current?.cesiumElement) return;
-      const viewer = viewerRef.current.cesiumElement;
-
-      try {
-        (viewer.cesiumWidget.creditContainer as HTMLElement).style.display =
-          'none';
-      } catch (e) {
-        // ignore
+    useEffect(() => {
+      if (ION_TOKEN) {
+        Ion.defaultAccessToken = ION_TOKEN;
       }
+    }, [ION_TOKEN]);
 
-      try {
-        setLoadingMessage('Setting camera position...');
-        setLoadingProgress(20);
+    useEffect(() => {
+      const initViewer = async () => {
+        if (!viewerRef.current?.cesiumElement) return;
+        const viewer = viewerRef.current.cesiumElement;
 
-        viewer.camera.setView({
-          destination: Cartesian3.fromDegrees(
-            INITIAL_POSITION.lon,
-            INITIAL_POSITION.lat,
-            INITIAL_POSITION.height
-          ),
-        });
-
-        setLoadingMessage('Loading terrain...');
-        setLoadingProgress(40);
-        const terrain = await createWorldTerrainAsync();
-        viewer.terrainProvider = terrain;
-
-        viewer.scene.globe.depthTestAgainstTerrain = true;
-        viewer.scene.globe.enableLighting = false;
-
-        viewer.imageryLayers.addImageryProvider(
-          new Cesium.UrlTemplateImageryProvider({
-            url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png',
-            subdomains: ['a', 'b', 'c', 'd'],
-            credit: 'Map tiles by CartoDB, under CC BY 3.0',
-          })
-        );
-
-        if (GOOGLE_KEY) {
-          setLoadingMessage('Loading Google 3D Tiles...');
-          setLoadingProgress(60);
-          try {
-            const tileset = await createGooglePhotorealistic3DTileset({
-              key: GOOGLE_KEY,
-            });
-            viewer.scene.primitives.add(tileset);
-            setLoadingProgress(80);
-
-            setTimeout(() => {
-              viewer.camera.flyTo({
-                destination: Cartesian3.fromDegrees(
-                  INITIAL_POSITION.lon,
-                  INITIAL_POSITION.lat,
-                  INITIAL_POSITION.height
-                ),
-                orientation: {
-                  heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
-                  pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
-                  roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
-                },
-                duration: 2,
-              });
-            }, 1000);
-          } catch (googleError: any) {
-            console.error('Google 3D Tiles error:', googleError);
-          }
+        try {
+          (viewer.cesiumWidget.creditContainer as HTMLElement).style.display =
+            'none';
+        } catch (e) {
+          // ignore
         }
 
-        setLoadingMessage('Loading markers...');
-        setLoadingProgress(90);
-      } catch (err: any) {
-        console.error('Initialization error:', err);
-        setLoadingMessage('Error loading map');
-      }
-    };
+        try {
+          setLoadingMessage('Setting camera position...');
+          setLoadingProgress(20);
 
-    const timer = setTimeout(initViewer, 500);
-    return () => clearTimeout(timer);
-  }, [GOOGLE_KEY]);
+          console.log(
+            'CesiumMap initViewer - initialPosition:',
+            initialPosition
+          );
+          const position = initialPosition || INITIAL_POSITION;
+          const height = INITIAL_POSITION.height;
 
-  useEffect(() => {
-    let mounted = true;
+          // Shift latitude down by ~50 meters (0.00045 degrees) if initialPosition exists
+          const lat = initialPosition ? position.lat - 0.006 : position.lat;
 
-    const loadMarkersFromFirestore = async () => {
-      const viewer = viewerRef.current?.cesiumElement;
-      if (!viewer) {
-        setTimeout(loadMarkersFromFirestore, 100);
-        return;
-      }
+          console.log(
+            'Using position:',
+            { lon: position.lon, lat },
+            'height:',
+            height
+          );
 
-      if (markersLoadedRef.current) {
-        return;
-      }
+          viewer.camera.setView({
+            destination: Cartesian3.fromDegrees(position.lon, lat, height),
+          });
 
-      markersLoadedRef.current = true;
+          setLoadingMessage('Loading terrain...');
+          setLoadingProgress(40);
+          const terrain = await createWorldTerrainAsync();
+          viewer.terrainProvider = terrain;
 
-      let events: CommunityEvent[] = [];
-      try {
-        events = await fetchCommunityEvents();
-        console.log('Fetched events:', events);
-      } catch (err) {
-        console.error('Error fetching community events:', err);
+          viewer.scene.globe.depthTestAgainstTerrain = true;
+          viewer.scene.globe.enableLighting = false;
+
+          viewer.imageryLayers.addImageryProvider(
+            new Cesium.UrlTemplateImageryProvider({
+              url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png',
+              subdomains: ['a', 'b', 'c', 'd'],
+              credit: 'Map tiles by CartoDB, under CC BY 3.0',
+            })
+          );
+
+          if (GOOGLE_KEY) {
+            setLoadingMessage('Loading Google 3D Tiles...');
+            setLoadingProgress(60);
+            try {
+              const tileset = await createGooglePhotorealistic3DTileset({
+                key: GOOGLE_KEY,
+              });
+              viewer.scene.primitives.add(tileset);
+              setLoadingProgress(80);
+
+              setTimeout(() => {
+                const position = initialPosition || INITIAL_POSITION;
+                const height = INITIAL_POSITION.height;
+
+                // Shift latitude down by ~50 meters (0.00045 degrees) if initialPosition exists
+                const lat = initialPosition
+                  ? position.lat - 0.006
+                  : position.lat;
+
+                viewer.camera.flyTo({
+                  destination: Cartesian3.fromDegrees(
+                    position.lon,
+                    lat,
+                    height
+                  ),
+                  orientation: {
+                    heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+                    pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+                    roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
+                  },
+                  duration: 2,
+                });
+              }, 1000);
+            } catch (googleError: any) {
+              console.error('Google 3D Tiles error:', googleError);
+            }
+          }
+
+          setLoadingMessage('Loading markers...');
+          setLoadingProgress(90);
+        } catch (err: any) {
+          console.error('Initialization error:', err);
+          setLoadingMessage('Error loading map');
+        }
+      };
+
+      const timer = setTimeout(initViewer, 500);
+      return () => clearTimeout(timer);
+    }, [GOOGLE_KEY]);
+
+    useEffect(() => {
+      let mounted = true;
+
+      const loadMarkersFromFirestore = async () => {
+        const viewer = viewerRef.current?.cesiumElement;
+        if (!viewer) {
+          setTimeout(loadMarkersFromFirestore, 100);
+          return;
+        }
+
+        if (markersLoadedRef.current) {
+          return;
+        }
+
+        markersLoadedRef.current = true;
+
+        let events: CommunityEvent[] = [];
+        try {
+          events = await fetchCommunityEvents();
+          console.log('Fetched events:', events);
+        } catch (err) {
+          console.error('Error fetching community events:', err);
+          setLoadingProgress(100);
+          setLoadingMessage('Complete!');
+          setTimeout(() => setIsLoading(false), 1200);
+          return;
+        }
+
+        if (!mounted) return;
+
+        // Extract unique categories
+        const categories = Array.from(
+          new Set(events.map((e) => e.category).filter(Boolean))
+        ) as string[];
+        setAllCategories(categories);
+        // Notify parent of all categories initially
+        if (onCategoriesChange) {
+          onCategoriesChange(categories);
+        }
+
+        // build entities
+        for (const evt of events) {
+          const lng = (evt as any).long ?? (evt as any).longitude ?? 0;
+          const lat = (evt as any).lat ?? (evt as any).latitude ?? 0;
+          const height = 290;
+
+          const pos = Cesium.Cartesian3.fromDegrees(lng, lat, height);
+
+          let circleImage: HTMLCanvasElement | string = '/file.svg';
+          if (evt.imageUri) {
+            try {
+              circleImage = await createCircularImage(evt.imageUri, 128);
+            } catch (err) {
+              console.warn('Failed to create circular image', err);
+              circleImage = evt.imageUri;
+            }
+          }
+
+          const entity = viewer.entities.add({
+            id: evt.id,
+            name: evt.name,
+            position: pos,
+            model: evt.modelUri
+              ? {
+                  uri: evt.modelUri,
+                  scale: 1,
+                  minimumPixelSize: 32,
+                }
+              : undefined,
+            billboard: {
+              image: circleImage,
+              scale: 0.6,
+              verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+              disableDepthTestDistance: 0,
+              eyeOffset: new Cesium.Cartesian3(0, 0, 0),
+              pixelOffset: new Cesium.Cartesian2(0, -40),
+            },
+          });
+
+          (entity as any)._pos = pos;
+          (entity as any)._markerData = evt;
+          (entity as any)._category = evt.category;
+        }
+
+        if (!postRenderListenerRef.current) {
+          const fn = () => {
+            const camera = viewer.camera;
+            const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(
+              camera.position
+            );
+            let height = carto.height;
+
+            const minHeight = 500;
+            const maxHeight = 2000;
+
+            if (height < minHeight) {
+              carto.height = minHeight;
+              camera.position =
+                Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+            } else if (height > maxHeight) {
+              carto.height = maxHeight;
+              camera.position =
+                Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+            }
+
+            const cameraPos = viewer.camera.positionWC;
+
+            viewer.entities.values.forEach((entity) => {
+              const entityWithPos = entity as any;
+              if (!entityWithPos._pos) return;
+
+              const pos = entityWithPos._pos as any;
+
+              const toCamera = Cesium.Cartesian3.subtract(
+                cameraPos,
+                pos,
+                new Cesium.Cartesian3()
+              );
+
+              toCamera.z = 0;
+              Cesium.Cartesian3.normalize(toCamera, toCamera);
+
+              const heading = Math.atan2(toCamera.x, toCamera.y);
+
+              entityWithPos.orientation =
+                Cesium.Transforms.headingPitchRollQuaternion(
+                  pos,
+                  new Cesium.HeadingPitchRoll(heading, 0, 0)
+                ) as any;
+            });
+          };
+
+          viewer.scene.postRender.addEventListener(fn);
+          postRenderListenerRef.current = fn;
+        }
+
+        viewerReadyRef.current = true;
+        console.log('Viewer is now ready, markers loaded');
+
         setLoadingProgress(100);
         setLoadingMessage('Complete!');
         setTimeout(() => setIsLoading(false), 1200);
+      };
+
+      const timer = setTimeout(loadMarkersFromFirestore, 1000);
+
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+
+        const viewer = viewerRef.current?.cesiumElement;
+        if (postRenderListenerRef.current && viewer) {
+          viewer.scene.postRender.removeEventListener(
+            postRenderListenerRef.current
+          );
+          postRenderListenerRef.current = null;
+        }
+      };
+    }, []);
+
+    // Apply filters when selectedCategories or dateRange changes
+    useEffect(() => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer || !viewerReadyRef.current) return;
+
+      viewer.entities.values.forEach((entity) => {
+        const entityWithCategory = entity as any;
+        const category = entityWithCategory._category;
+        const markerData = entityWithCategory._markerData;
+
+        // Category filter
+        const categoryMatch =
+          selectedCategories.length === 0 ||
+          selectedCategories.includes(category);
+
+        // Date range filter
+        let dateMatch = true;
+        if ((dateRange?.from || dateRange?.to) && markerData?.date) {
+          const eventDate = new Date(markerData.date);
+          const eventDateNormalized = new Date(eventDate.setHours(0, 0, 0, 0));
+
+          if (dateRange.from && dateRange.to) {
+            // Both from and to dates are set - check if event is within range
+            const fromNormalized = new Date(
+              dateRange.from.setHours(0, 0, 0, 0)
+            );
+            const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
+            dateMatch =
+              eventDateNormalized.getTime() >= fromNormalized.getTime() &&
+              eventDateNormalized.getTime() <= toNormalized.getTime();
+          } else if (dateRange.from) {
+            // Only from date is set - show events on or after this date
+            const fromNormalized = new Date(
+              dateRange.from.setHours(0, 0, 0, 0)
+            );
+            dateMatch =
+              eventDateNormalized.getTime() >= fromNormalized.getTime();
+          } else if (dateRange.to) {
+            // Only to date is set - show events on or before this date
+            const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
+            dateMatch = eventDateNormalized.getTime() <= toNormalized.getTime();
+          }
+        }
+
+        entity.show = categoryMatch && dateMatch;
+      });
+    }, [selectedCategories, dateRange]);
+
+    // Single click handler useEffect
+    useEffect(() => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer || !viewerReadyRef.current) {
         return;
       }
 
-      if (!mounted) return;
-
-      // Extract unique categories
-      const categories = Array.from(
-        new Set(events.map((e) => e.category).filter(Boolean))
-      ) as string[];
-      setAllCategories(categories);
-      // Notify parent of all categories initially
-      if (onCategoriesChange) {
-        onCategoriesChange(categories);
-      }
-
-      // build entities
-      for (const evt of events) {
-        const lng = (evt as any).long ?? (evt as any).longitude ?? 0;
-        const lat = (evt as any).lat ?? (evt as any).latitude ?? 0;
-        const height = 290;
-
-        const pos = Cesium.Cartesian3.fromDegrees(lng, lat, height);
-
-        let circleImage: HTMLCanvasElement | string = '/file.svg';
-        if (evt.imageUri) {
-          try {
-            circleImage = await createCircularImage(evt.imageUri, 128);
-          } catch (err) {
-            console.warn('Failed to create circular image', err);
-            circleImage = evt.imageUri;
-          }
-        }
-
-        const entity = viewer.entities.add({
-          id: evt.id,
-          name: evt.name,
-          position: pos,
-          model: evt.modelUri
-            ? {
-                uri: evt.modelUri,
-                scale: 1,
-                minimumPixelSize: 32,
-              }
-            : undefined,
-          billboard: {
-            image: circleImage,
-            scale: 0.6,
-            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-            disableDepthTestDistance: 0,
-            eyeOffset: new Cesium.Cartesian3(0, 0, 0),
-            pixelOffset: new Cesium.Cartesian2(0, -40),
-          },
-        });
-
-        (entity as any)._pos = pos;
-        (entity as any)._markerData = evt;
-        (entity as any)._category = evt.category;
-      }
-
-      if (!postRenderListenerRef.current) {
-        const fn = () => {
-          const camera = viewer.camera;
-          const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(
-            camera.position
-          );
-          let height = carto.height;
-
-          const minHeight = 500;
-          const maxHeight = 2000;
-
-          if (height < minHeight) {
-            carto.height = minHeight;
-            camera.position =
-              Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
-          } else if (height > maxHeight) {
-            carto.height = maxHeight;
-            camera.position =
-              Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
-          }
-
-          const cameraPos = viewer.camera.positionWC;
-
-          viewer.entities.values.forEach((entity) => {
-            const entityWithPos = entity as any;
-            if (!entityWithPos._pos) return;
-
-            const pos = entityWithPos._pos as any;
-
-            const toCamera = Cesium.Cartesian3.subtract(
-              cameraPos,
-              pos,
-              new Cesium.Cartesian3()
-            );
-
-            toCamera.z = 0;
-            Cesium.Cartesian3.normalize(toCamera, toCamera);
-
-            const heading = Math.atan2(toCamera.x, toCamera.y);
-
-            entityWithPos.orientation =
-              Cesium.Transforms.headingPitchRollQuaternion(
-                pos,
-                new Cesium.HeadingPitchRoll(heading, 0, 0)
-              ) as any;
-          });
-        };
-
-        viewer.scene.postRender.addEventListener(fn);
-        postRenderListenerRef.current = fn;
-      }
-
-      viewerReadyRef.current = true;
-      console.log('Viewer is now ready, markers loaded');
-
-      setLoadingProgress(100);
-      setLoadingMessage('Complete!');
-      setTimeout(() => setIsLoading(false), 1200);
-    };
-
-    const timer = setTimeout(loadMarkersFromFirestore, 1000);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-
-      const viewer = viewerRef.current?.cesiumElement;
-      if (postRenderListenerRef.current && viewer) {
-        viewer.scene.postRender.removeEventListener(
-          postRenderListenerRef.current
-        );
-        postRenderListenerRef.current = null;
-      }
-    };
-  }, []);
-
-  // Apply filters when selectedCategories or dateRange changes
-  useEffect(() => {
-    const viewer = viewerRef.current?.cesiumElement;
-    if (!viewer || !viewerReadyRef.current) return;
-
-    viewer.entities.values.forEach((entity) => {
-      const entityWithCategory = entity as any;
-      const category = entityWithCategory._category;
-      const markerData = entityWithCategory._markerData;
-
-      // Category filter
-      const categoryMatch =
-        selectedCategories.length === 0 ||
-        selectedCategories.includes(category);
-
-      // Date range filter
-      let dateMatch = true;
-      if ((dateRange?.from || dateRange?.to) && markerData?.date) {
-        const eventDate = new Date(markerData.date);
-        const eventDateNormalized = new Date(eventDate.setHours(0, 0, 0, 0));
-
-        if (dateRange.from && dateRange.to) {
-          // Both from and to dates are set - check if event is within range
-          const fromNormalized = new Date(dateRange.from.setHours(0, 0, 0, 0));
-          const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
-          dateMatch =
-            eventDateNormalized.getTime() >= fromNormalized.getTime() &&
-            eventDateNormalized.getTime() <= toNormalized.getTime();
-        } else if (dateRange.from) {
-          // Only from date is set - show events on or after this date
-          const fromNormalized = new Date(dateRange.from.setHours(0, 0, 0, 0));
-          dateMatch = eventDateNormalized.getTime() >= fromNormalized.getTime();
-        } else if (dateRange.to) {
-          // Only to date is set - show events on or before this date
-          const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
-          dateMatch = eventDateNormalized.getTime() <= toNormalized.getTime();
-        }
-      }
-
-      entity.show = categoryMatch && dateMatch;
-    });
-  }, [selectedCategories, dateRange]);
-
-  // Single click handler useEffect
-  useEffect(() => {
-    const viewer = viewerRef.current?.cesiumElement;
-    if (!viewer || !viewerReadyRef.current) {
-      return;
-    }
-
-    if (clickHandlerRef.current) {
-      clickHandlerRef.current.destroy();
-    }
-
-    clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(
-      viewer.scene.canvas
-    );
-    clickHandlerRef.current.setInputAction((click: any) => {
-      const pickedObject = viewer.scene.pick(click.position);
-
-      if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
-        const entity = pickedObject.id as any;
-        if (onMarkerClick && entity._markerData) {
-          onMarkerClick(entity.id, entity._markerData);
-        }
-      }
-    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
-
-    return () => {
       if (clickHandlerRef.current) {
         clickHandlerRef.current.destroy();
-        clickHandlerRef.current = null;
       }
+
+      clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(
+        viewer.scene.canvas
+      );
+      clickHandlerRef.current.setInputAction((click: any) => {
+        const pickedObject = viewer.scene.pick(click.position);
+
+        if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
+          const entity = pickedObject.id as any;
+          if (onMarkerClick && entity._markerData) {
+            onMarkerClick(entity.id, entity._markerData);
+          }
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      return () => {
+        if (clickHandlerRef.current) {
+          clickHandlerRef.current.destroy();
+          clickHandlerRef.current = null;
+        }
+      };
+    }, [onMarkerClick, viewerReadyRef.current]);
+
+    const handleResetView = () => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer) return;
+
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(
+          INITIAL_POSITION.lon,
+          INITIAL_POSITION.lat,
+          INITIAL_POSITION.height
+        ),
+        orientation: {
+          heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
+          pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
+          roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
+        },
+        duration: 2,
+      });
     };
-  }, [onMarkerClick, viewerReadyRef.current]);
 
-  const handleResetView = () => {
-    const viewer = viewerRef.current?.cesiumElement;
-    if (!viewer) return;
+    const handleCenterOnLocation = (lat: number, lon: number) => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer) return;
 
-    viewer.camera.flyTo({
-      destination: Cartesian3.fromDegrees(
-        INITIAL_POSITION.lon,
-        INITIAL_POSITION.lat,
-        INITIAL_POSITION.height
-      ),
-      orientation: {
-        heading: Cesium.Math.toRadians(INITIAL_POSITION.heading),
-        pitch: Cesium.Math.toRadians(INITIAL_POSITION.pitch),
-        roll: Cesium.Math.toRadians(INITIAL_POSITION.roll),
-      },
-      duration: 2,
-    });
-  };
+      viewer.camera.flyTo({
+        destination: Cartesian3.fromDegrees(lon, lat, 1000),
+        orientation: {
+          heading: Cesium.Math.toRadians(0),
+          pitch: Cesium.Math.toRadians(-45),
+          roll: Cesium.Math.toRadians(0),
+        },
+        duration: 2,
+      });
+    };
 
-  if (!ION_TOKEN) {
+    if (!ION_TOKEN) {
+      return (
+        <div style={{ padding: '20px' }}>
+          <h2>Error: Missing Cesium Ion Token</h2>
+          <p>Please set NEXT_PUBLIC_CESIUM_ION_TOKEN in your .env.local file</p>
+        </div>
+      );
+    }
+
     return (
-      <div style={{ padding: '20px' }}>
-        <h2>Error: Missing Cesium Ion Token</h2>
-        <p>Please set NEXT_PUBLIC_CESIUM_ION_TOKEN in your .env.local file</p>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-
-      {/* Loading Screen Overlay */}
-      {isLoading && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: '#028174',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            transition: 'opacity 0.5s ease-out',
-          }}
-        >
+      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        {/* Loading Screen Overlay */}
+        {isLoading && (
           <div
             style={{
-              fontSize: '2rem',
-              fontWeight: 'bold',
-              color: '#ffe3b3',
-              marginBottom: '2rem',
-            }}
-          >
-            Loading Map
-          </div>
-
-          <div
-            style={{
-              width: '300px',
-              height: '8px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '4px',
-              overflow: 'hidden',
-              marginBottom: '1rem',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: '#028174',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              transition: 'opacity 0.5s ease-out',
             }}
           >
             <div
               style={{
-                width: `${loadingProgress}%`,
-                height: '100%',
-                backgroundColor: '#ff4958',
-                transition: 'width 0.3s ease-out',
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                color: '#ffe3b3',
+                marginBottom: '2rem',
               }}
-            />
-          </div>
+            >
+              Loading Map
+            </div>
 
-          <div
-            style={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              fontSize: '0.9rem',
-            }}
-          >
-            {loadingMessage}
-          </div>
+            <div
+              style={{
+                width: '300px',
+                height: '8px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                marginBottom: '1rem',
+              }}
+            >
+              <div
+                style={{
+                  width: `${loadingProgress}%`,
+                  height: '100%',
+                  backgroundColor: '#ff4958',
+                  transition: 'width 0.3s ease-out',
+                }}
+              />
+            </div>
 
-          <div
-            style={{
-              color: '#ffe3b3',
-              fontSize: '1.5rem',
-              marginTop: '1rem',
-              fontWeight: 'bold',
-            }}
-          >
-            {loadingProgress}%
-          </div>
-        </div>
-      )}
+            <div
+              style={{
+                color: 'rgba(255, 255, 255, 0.7)',
+                fontSize: '0.9rem',
+              }}
+            >
+              {loadingMessage}
+            </div>
 
-      <Viewer
-        ref={viewerRef}
-        full
-        baseLayerPicker={false}
-        timeline={false}
-        animation={false}
-        geocoder={false}
-        homeButton={false}
-        navigationHelpButton={false}
-        sceneModePicker={false}
-        infoBox={false}
-      />
-    </div>
-  );
-});
+            <div
+              style={{
+                color: '#ffe3b3',
+                fontSize: '1.5rem',
+                marginTop: '1rem',
+                fontWeight: 'bold',
+              }}
+            >
+              {loadingProgress}%
+            </div>
+          </div>
+        )}
+
+        <Viewer
+          ref={viewerRef}
+          full
+          baseLayerPicker={false}
+          timeline={false}
+          animation={false}
+          geocoder={false}
+          homeButton={false}
+          navigationHelpButton={false}
+          sceneModePicker={false}
+          infoBox={false}
+        />
+      </div>
+    );
+  }
+);
 
 CesiumMap.displayName = 'CesiumMap';
 
