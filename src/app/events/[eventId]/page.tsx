@@ -237,13 +237,13 @@ export default function EventPage({
             {/* Header with Image and Title */}
             <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-4 md:mb-6">
               {/* Image */}
-              <div className="relative w-full md:w-48 h-48 md:h-48 rounded-xl overflow-hidden shrink-0">
+              <div className="relative w-full md:w-48 h-48 md:h-48 rounded-xl overflow-hidden shrink-0 bg-muted/20 flex items-center justify-center">
                 <Image
                   src={communityEvent.imageUri}
                   alt={communityEvent.name}
                   fill
                   unoptimized
-                  className="object-cover"
+                  className="object-contain"
                 />
               </div>
 
