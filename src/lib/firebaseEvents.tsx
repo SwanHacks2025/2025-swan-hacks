@@ -50,7 +50,9 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             lat: event.lat,
             long: event.long,
             location: event.location,
-            date: event.date
+            date: event.date,
+            owner: event.owner,
+            attendees: event.attendees
         };
     },
     fromFirestore(snapshot: QueryDocumentSnapshot): CommunityEvent {

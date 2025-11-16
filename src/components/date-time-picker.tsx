@@ -17,8 +17,12 @@ export function DateTimePicker() {
   const [open, setOpen] = React.useState(false)
   const [date, setDate] = React.useState<Date | undefined>(undefined)
 
+  const [startTime, setStartTime] = React.useState("10:30")
+  const [endTime, setEndTime] = React.useState("11:30")
+
   return (
     <div className="flex gap-4">
+
       <div className="flex flex-col gap-3">
         <Label htmlFor="date-picker" className="px-1">
           Date
@@ -38,37 +42,54 @@ export function DateTimePicker() {
             <Calendar
               mode="single"
               selected={date}
-              onSelect={(date) => {
-                setDate(date)
+              onSelect={(d) => {
+                setDate(d)
                 setOpen(false)
               }}
             />
           </PopoverContent>
         </Popover>
+
+        <input
+          type="hidden"
+          name="date"
+          value={date ? date.toISOString().split("T")[0] : ""}
+        />
       </div>
+
       <div className="flex flex-col gap-3">
-        <Label htmlFor="time-picker" className="px-1">
+        <Label htmlFor="start-time-picker" className="px-1">
           Start Time
         </Label>
         <Input
           type="time"
-          id="time-picker"
+          id="start-time-picker"
+          name="startTime"
           step="60"
-          defaultValue="10:30"
+          value={startTime}
+          onChange={(e) => setStartTime(e.target.value)}
           className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
         />
+
+        <input type="hidden" name="startTime" value={startTime} />
       </div>
+
+
       <div className="flex flex-col gap-3">
-        <Label htmlFor="time-picker" className="px-1">
+        <Label htmlFor="end-time-picker" className="px-1">
           End Time
         </Label>
         <Input
           type="time"
-          id="time-picker"
+          id="end-time-picker"
+          name="endTime"
           step="60"
-          defaultValue="11:30"
+          value={endTime}
+          onChange={(e) => setEndTime(e.target.value)}
           className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
         />
+
+        <input type="hidden" name="endTime" value={endTime} />
       </div>
 
     </div>

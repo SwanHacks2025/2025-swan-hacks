@@ -28,7 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateTimePicker } from "./date-time-picker";
-import { CommunityEvent, EventTypes } from "@/lib/firebaseEvents";
+import { CommunityEvent, communityEventConverter, EventTypes } from "@/lib/firebaseEvents";
+import { auth, db } from "@/lib/firebaseClient";
+import { onAuthStateChanged, User } from "@firebase/auth";
+import { collection, doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
 
 type NominatimResult = {
   display_name: string;
@@ -38,23 +41,24 @@ type NominatimResult = {
 
 export function EventDialog() {
   const [address, setAddress] = useState("");
-  const [lat, setLat] = useState("");
-  const [lon, setLon] = useState("");
   const [debouncedAddress, setDebouncedAddress] = useState("");
   const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
+  const [lat, setLat] = useState("");
+  const [lon, setLon] = useState("");
   const [addressError, setAddressError] = useState("");
 
-  // Debounce address input (~1s)
+  const [user, setUser] = useState<User | null>(null);
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const handle = setTimeout(() => {
       setDebouncedAddress(address);
-    }, 500);
-
+    }, 800);
     return () => clearTimeout(handle);
   }, [address]);
 
-  // Fetch suggestions when debounced value changes
   useEffect(() => {
     if (!debouncedAddress.trim()) {
       setAddressResults([]);
@@ -62,217 +66,226 @@ export function EventDialog() {
       return;
     }
 
-    const controller = new AbortController();
-
-    const fetchAddresses = async () => {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-            debouncedAddress
-          )}`,
-          {
-            signal: controller.signal,
-            headers: {
-              Accept: "application/json",
-            },
-          }
-        );
-
-        if (!res.ok) return;
-
-        const data = (await res.json()) as NominatimResult[];
-        setAddressResults(data);
-        setIsAddressOpen(data.length > 0);
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
-        console.error("Error fetching address suggestions", err);
-      }
-    };
-
-    fetchAddresses();
-
-    return () => controller.abort();
+    (async () => {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          debouncedAddress
+        )}`
+      );
+      const data: NominatimResult[] = await res.json();
+      setAddressResults(data);
+      setIsAddressOpen(data.length > 0);
+    })();
   }, [debouncedAddress]);
 
   const handleSelectAddress = (result: NominatimResult) => {
     setAddress(result.display_name);
+    setLat(result.lat);
+    setLon(result.lon);
     setIsAddressOpen(false);
+    setAddressError("");
   };
 
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (!firebaseUser) {
+        setLoading(false);
+        return;
+      }
+
+      const userRef = doc(db, "Users", firebaseUser.uid);
+      const snap = await getDoc(userRef);
+
+      if (snap.exists()) {
+        const data = snap.data() as { Username?: string };
+        setUsername(data.Username || firebaseUser.displayName || "");
+      } else {
+        setUsername(firebaseUser.displayName || "");
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, []);
+    
+  // -----------------------
+  // SUBMIT HANDLER
+  // -----------------------
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setAddressError("");
 
-    // If user did NOT choose from the dropdown, re-fetch address
+    // If no lat/lon, re-fetch to validate
     if (!lat || !lon) {
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
-        );
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+          address
+        )}`
+      );
+      const results: NominatimResult[] = await res.json();
 
-        const results = await res.json();
-
-        if (!results || results.length === 0) {
-          setAddressError("Address not found. Please select a valid address.");
-          return;
-        }
-
-        // take best match
-        setLat(results[0].lat);
-        setLon(results[0].lon);
-      } catch (err) {
-        setAddressError("Failed to look up address.");
+      if (!results || results.length === 0) {
+        setAddressError("Address not found. Please select a valid address.");
         return;
       }
+
+      setLat(results[0].lat);
+      setLon(results[0].lon);
     }
 
-    // After validation, we can assemble the event object:
-    const formData = new FormData(e.currentTarget);
+    const form = new FormData(e.currentTarget);
 
-    const name = formData.get("name") as string;
-    const description = formData.get("description") as string;
-    const category = formData.get("category") as EventTypes;
-    const locationStr = formData.get("address") as string;
-    const dateStr = formData.get("date") as string;   // you may adjust depending on DateTimePicker
-    const timeStr = formData.get("time") as string;
-  
-    // Combine date + time into Date object
-    const date = new Date(`${dateStr}T${timeStr}`);
+    const name = form.get("name")!.toString();
+    const description = form.get("description")!.toString();
+    const category = form.get("category") as EventTypes;
+    const locationStr = form.get("address")!.toString();
+    const dateStr = form.get("date")!.toString();
+    const startStr = form.get("startTime")!.toString();
+    const endStr = form.get("endTime")!.toString();
 
-    // Owner & attendees default
-    const owner = "CURRENT_USER_UID";     // replace with auth user.uid
-    const attendees: string[] = [];       // default empty
+    const startDate = new Date(`${dateStr}T${startStr}`);
+    const endDate = new Date(`${dateStr}T${endStr}`);
 
-    // Create CommunityEvent object
+    // Hardcode temporarily (replace with auth)
+    const owner = user?.uid;
+    const attendees: string[] = [];
+
     const event = new CommunityEvent(
-      crypto.randomUUID(),        // id
+      crypto.randomUUID(),
       name,
       description,
       category,
       parseFloat(lat),
       parseFloat(lon),
       locationStr,
-      date,
+      startDate,
       owner,
       attendees
     );
 
-    console.log("Created Event:", event);
-  
-    // optionally send to Firestore...
-    // await addDoc(collection(db, "Events"), event)
-  
-    // Close modal etc.
+    console.log("EVENT OBJECT:", event);
+
+    const db = getFirestore();
+    await setDoc(doc(db, "Events", event.id).withConverter(communityEventConverter), event);
   };
+  
+  if (loading) {
+    return (<p>Loading...</p>);
+  }
 
   return (
-    <Dialog>
-      <form onSubmit={handleSubmit}>
-        <DialogTrigger asChild>
-          <SidebarMenuButton>
-            <Plus />
-            <span>Create new event</span>
-          </SidebarMenuButton>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Create new event</DialogTitle>
-            <DialogDescription>
-              Schedule a new event in you&apos;re community.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-3">
-              <Label htmlFor="name-1">Name</Label>
-              <Input
-                id="name-1"
-                name="name"
-                placeholder="Cleanup in the Park"
-              />
+      <Dialog>
+  <DialogTrigger asChild>
+    <SidebarMenuButton>
+      <Plus />
+      <span>Create new event</span>
+    </SidebarMenuButton>
+  </DialogTrigger>
+
+  <DialogContent className="sm:max-w-[500px]">
+    <form onSubmit={handleSubmit}>
+      <DialogHeader>
+        <DialogTitle>Create new event</DialogTitle>
+        <DialogDescription>
+          Schedule a new event in your community.
+        </DialogDescription>
+      </DialogHeader>
+
+          <div className="grid gap-5">
+
+            {/* Event Name */}
+            <div className="grid gap-2">
+              <Label>Name</Label>
+              <Input name="name" placeholder="Cleanup in the Park" required />
             </div>
 
-            <div className="grid gap-3">
-              <Label htmlFor="description-1">Description</Label>
+            {/* Description */}
+            <div className="grid gap-2">
+              <Label>Description</Label>
               <Textarea
-                id="description-1"
                 name="description"
-                placeholder="A brief description of your event"
+                placeholder="A brief description of your event..."
+                required
               />
             </div>
 
-            <div className="grid gap-5">
+            {/* Category */}
+            <div className="grid gap-2">
+              <Label>Category</Label>
               <Select name="category">
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectLabel>Category</SelectLabel>
-                    <SelectItem value="volunteering">Volunteering</SelectItem>
-                    <SelectItem value="sports">Sports</SelectItem>
-                    <SelectItem value="tutoring">Tutoring</SelectItem>
+                    <SelectItem value={EventTypes.VOLUNTEER.toString()}>Volunteering</SelectItem>
+                    <SelectItem value={EventTypes.SPORTS.toString()}>Sports</SelectItem>
+                    <SelectItem value={EventTypes.TUTORING.toString()}>Tutoring</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="grid gap-5">
-              <DateTimePicker />
-            </div>
-
-            <div className="grid gap-3">
-              <Label htmlFor="address-1">Address</Label>
+            {/* Address + Autocomplete */}
+            <div className="grid gap-2">
+              <Label>Address</Label>
               <div className="relative">
                 <Input
-                  id="address-1"
                   name="address"
-                  placeholder="2520 Osborn Dr, Ames, IA 50011"
+                  placeholder="123 Main St"
                   autoComplete="off"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    setLat("");
+                    setLon("");
+                  }}
                   onFocus={() => {
-                    if (addressResults.length > 0) {
-                      setIsAddressOpen(true);
-                    }
+                    if (addressResults.length > 0) setIsAddressOpen(true);
                   }}
-                  onBlur={() => {
-                    setTimeout(() => setIsAddressOpen(false), 150);
-                  }}
+                  onBlur={() => setTimeout(() => setIsAddressOpen(false), 150)}
                 />
 
-                <input type="hidden" name="lat" value={lat} />
-                <input type="hidden" name="lon" value={lon} />
-
                 {isAddressOpen && addressResults.length > 0 && (
-                  <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-                    {addressResults.map((result, index) => (
+                  <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-popover shadow">
+                    {addressResults.map((r, i) => (
                       <button
-                        key={`${result.lat}-${result.lon}-${index}`}
+                        key={i}
                         type="button"
-                        className="flex w-full items-start px-3 py-2 text-left text-sm hover:bg-accent"
+                        className="w-full text-left px-3 py-2 hover:bg-accent text-sm"
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => handleSelectAddress(result)}
+                        onClick={() => handleSelectAddress(r)}
                       >
-                        {result.display_name}
+                        {r.display_name}
                       </button>
                     ))}
                   </div>
                 )}
-
-                {addressError && (
-                  <p className="text-sm text-red-500">{addressError}</p>
-                )}
               </div>
+
+              {addressError && (
+                <p className="text-sm text-red-500">{addressError}</p>
+              )}
+
+              <input type="hidden" name="lat" value={lat} />
+              <input type="hidden" name="lon" value={lon} />
             </div>
+
+            {/* Date + Time Picker */}
+            <DateTimePicker />
           </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DialogClose>
-            <Button type="submit">Save changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </form>
-    </Dialog>
+
+            <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline">Cancel</Button>
+        </DialogClose>
+        <Button type="submit">Create Event</Button>
+      </DialogFooter>
+    </form>
+  </DialogContent>
+</Dialog>
   );
 }
