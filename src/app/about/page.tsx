@@ -94,7 +94,7 @@ const faqs = [
   {
     question: 'Where is the map data from?',
     answer:
-      'Our map data is provided by Google Maps, with tiling done by Cesium. Geocoding and address lookup is done by OpenStreetMaps.',
+      'Our map data is provided by Cesium, with tiling done by Google Maps Photorealistic Tiles API. Geocoding and address lookup is done by OpenStreetMaps.',
   },
 ];
 
