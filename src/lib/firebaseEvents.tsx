@@ -26,8 +26,11 @@ export class CommunityEvent {
     
     owner: string
     attendees: string[]
+
+    imageUri: string
+    modelUri: string
     
-    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[]) {
+    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[], imageUri: string, modelUri: string) {
         this.id = id
         this.name = name
         this.description = description
@@ -38,6 +41,8 @@ export class CommunityEvent {
         this.date = date
         this.owner = owner
         this.attendees = attendees
+        this.imageUri = imageUri
+        this.modelUri = modelUri
     }
 }
 
@@ -65,7 +70,9 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             data.location,
             data.date ? data.date.toDate() : new Date(data.date),
             data.owner,
-            data.attendees
+            data.attendees,
+            data.imageUri,
+            data.modelUri
         );
     }
 };
