@@ -1,5 +1,6 @@
 "use client"
 
+import { EventTypes } from "@/lib/firebaseEvents"
 import { createContext, useContext, useState, ReactNode } from "react"
 import { DateRange } from "react-day-picker"
 
@@ -28,9 +29,12 @@ export type EventFilterContextType = {
   setSelectedTags: (tags: Set<string>) => void
 }
 
+const categoryItems = Object.values(EventTypes)
+  .filter((v) => typeof v === "string" && v != 'NO_CATEGORY') as string[];
+
 const initialFilters: FilterCategory[] = [
   { name: "Attendance", items: ["Organizing", "Attendee"] },
-  { name: "Category", items: ["Volunteering", "Sports", "Tutoring"] },
+  { name: "Category", items: categoryItems },
 ]
 
 const EventFilterContext = createContext<EventFilterContextType | undefined>(

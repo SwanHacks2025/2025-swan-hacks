@@ -14,7 +14,15 @@ export enum EventTypes {
     NO_CATEGORY,
     VOLUNTEER = 'Volunteering',
     SPORTS = 'Sports',
-    TUTORING = 'Tutoring'
+    TUTORING = 'Tutoring',
+    ARTS = 'Arts & Crafts',
+    YOGA = 'Yoga',
+    BOOKS = 'Book Club',
+    WORKSHOP = 'Workshop & Learning',
+    MUSIC = 'Music & Concert',
+    HANGOUT = 'Hang-out',
+    OUTDOORS = 'Outdoors & Nature',
+    FOOD = 'Food & Dining'
 }
 
 export function getEventTypeFilename(category: EventTypes): string {
@@ -25,8 +33,24 @@ export function getEventTypeFilename(category: EventTypes): string {
       return "/models/SportsMarker.glb";
     case EventTypes.TUTORING:
       return "/models/TutoringMarker.glb";
+    case EventTypes.ARTS:
+      return "/models/ArtsAndCraftsMarker.glb";
+    case EventTypes.YOGA:
+      return "/models/YogaMarker.glb";
+    case EventTypes.BOOKS:
+      return "/models/BookClubMarker.glb";
+    case EventTypes.FOOD:
+      return "/models/FoodAndDining.glb";
+    case EventTypes.HANGOUT:
+      return "/models/HangOut.glb";
+    case EventTypes.MUSIC:
+      return "/models/MusicAndConcertMarker.glb";
+    case EventTypes.OUTDOORS:
+      return "/models/OutdoorAndNatureMarker.glb";
+    case EventTypes.WORKSHOP:
+      return "/models/WorkshopAndLearningMarker.glb";
     default:
-        return "";
+      return "/models/HangOut.glb";
   }
 }
 
@@ -38,6 +62,22 @@ function getEventTypeName(category: EventTypes) {
           return "SPORTS";
         case EventTypes.TUTORING:
           return "TUTORING";
+        case EventTypes.ARTS:
+          return "ARTS";
+        case EventTypes.YOGA:
+          return "YOGA";
+        case EventTypes.BOOKS:
+          return "BOOKS";
+        case EventTypes.FOOD:
+          return "FOOD";
+        case EventTypes.HANGOUT:
+          return "HANGOUT";
+        case EventTypes.MUSIC:
+          return "MUSIC";
+        case EventTypes.OUTDOORS:
+          return "OUTDOORS";
+        case EventTypes.WORKSHOP:
+          return "WORKSHOP";
         default:
             return "NO_CATEGORY";
     }

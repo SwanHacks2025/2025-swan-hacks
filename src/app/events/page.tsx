@@ -519,7 +519,7 @@ export default function EventPage() {
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-6 py-4">
+                <div className="space-y-4 py-4">
                   {/* Date Range Picker */}
                   <div>
                     <Label className="text-sm font-semibold mb-3 block">
@@ -552,7 +552,7 @@ export default function EventPage() {
                       <Label className="text-sm font-semibold mb-3 block">
                         {filter.name}
                       </Label>
-                      <div className="space-y-2">
+                      <div className="space-y-2 grid grid-cols-2 @xl/main:grid-cols-2 @4xl/main:grid-cols-2">
                         {filter.items.map((item) => {
                           const isActive =
                             selectedFilters[filter.name]?.has(item);
@@ -638,21 +638,15 @@ export default function EventPage() {
                             <SelectValue placeholder="Select a category" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Category</SelectLabel>
-                              <SelectItem
-                                value={EventTypes.VOLUNTEER.toString()}
-                              >
-                                Volunteering
-                              </SelectItem>
-                              <SelectItem value={EventTypes.SPORTS.toString()}>
-                                Sports
-                              </SelectItem>
-                              <SelectItem
-                                value={EventTypes.TUTORING.toString()}
-                              >
-                                Tutoring
-                              </SelectItem>
+                          <SelectGroup>
+                            <SelectLabel>Category</SelectLabel>
+                              {Object.values(EventTypes)
+                                .filter((v) => typeof v === "string" && v != 'NO_CATEGORY') // Does not work
+                                .map((category) => (
+                                  <SelectItem key={category} value={category}>
+                                    {category}
+                                  </SelectItem>
+                                ))}
                             </SelectGroup>
                           </SelectContent>
                         </Select>
