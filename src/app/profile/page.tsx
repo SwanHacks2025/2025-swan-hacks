@@ -17,13 +17,19 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("");
   const [displayUsername, setDisplayUsername] = useState("");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [bio, setBio] = useState("");
+  const [displayBio, setDisplayBio] = useState("");
+  const [interests, setInterests] = useState<string[]>([]);
+  const [newInterest, setNewInterest] = useState("");
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingUsername, setSavingUsername] = useState(false);
+  const [savingBio, setSavingBio] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [message, setMessage] = useState<string | null>(null);
   const [isEditingUsername, setIsEditingUsername] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
 
   const router = useRouter();
 
@@ -46,6 +52,8 @@ export default function ProfilePage() {
             photoURL?: string;
             customPhoto?: boolean;
             customPhotoURL?: string;
+            bio?: string;
+            interests?: string[];
           };
 
           const initialUsername =
@@ -59,12 +67,18 @@ export default function ProfilePage() {
           if (data.customPhoto) {
             setPhotoURL(data.customPhotoURL || null);
           }
+          setBio(data.bio || "");
+          setDisplayBio(data.bio || "");
+          setInterests(data.interests || []);
         } else {
           const fallbackName =
             user.displayName || user.email?.split("@")[0] || "NewUser";
           setUsername(fallbackName);
           setDisplayUsername(fallbackName);
           setPhotoURL(user.photoURL || null);
+          setBio("");
+          setDisplayBio("");
+          setInterests([]);
         }
       } catch (err) {
         console.error(err);
@@ -97,6 +111,58 @@ export default function ProfilePage() {
     } finally {
       setSavingUsername(false);
     }
+  };
+
+  // Save bio
+  const handleSaveBio = async () => {
+    if (!user) return;
+    setSavingBio(true);
+    setMessage(null);
+
+    try {
+      const userRef = doc(db, "Users", user.uid);
+      await setDoc(userRef, { bio: bio }, { merge: true });
+      setDisplayBio(bio);
+      setIsEditingBio(false);
+      setMessage("Bio updated!");
+    } catch (err) {
+      console.error(err);
+      setMessage("Error saving bio.");
+    } finally {
+      setSavingBio(false);
+    }
+  };
+
+  // Save interests
+  const handleSaveInterests = async () => {
+    if (!user) return;
+    setMessage(null);
+
+    try {
+      const userRef = doc(db, "Users", user.uid);
+      await setDoc(userRef, { interests: interests }, { merge: true });
+      setMessage("Interests updated!");
+    } catch (err) {
+      console.error(err);
+      setMessage("Error saving interests.");
+    }
+  };
+
+  // Add interest
+  const handleAddInterest = () => {
+    if (newInterest.trim() && !interests.includes(newInterest.trim())) {
+      const updated = [...interests, newInterest.trim()];
+      setInterests(updated);
+      setNewInterest("");
+      handleSaveInterests();
+    }
+  };
+
+  // Remove interest
+  const handleRemoveInterest = (interestToRemove: string) => {
+    const updated = interests.filter((i) => i !== interestToRemove);
+    setInterests(updated);
+    handleSaveInterests();
   };
 
   // Upload new profile picture
@@ -161,7 +227,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6">
-      <h1 className="text-2xl font-bold">Profile</h1>
+      <h1 className="text-2xl font-bold mt-10">Profile</h1>
 
       {/* Profile Picture */}
       <div className="flex flex-col items-center space-y-3">
@@ -234,6 +300,97 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Bio section */}
+      <div className="space-y-2">
+        <p className="text-sm text-gray-500">Bio</p>
+        {!isEditingBio ? (
+          <div className="flex items-start justify-between">
+            <p className="text-base text-gray-700 flex-1">
+              {displayBio || "No bio yet. Click Edit to add one."}
+            </p>
+            <button
+              onClick={() => {
+                setBio(displayBio);
+                setIsEditingBio(true);
+                setMessage(null);
+              }}
+              className="text-sm px-3 py-1 rounded border ml-2"
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <textarea
+              className="w-full border rounded px-3 py-2 text-sm min-h-[100px]"
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="Tell us about yourself..."
+              maxLength={500}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveBio}
+                disabled={savingBio}
+                className="px-4 py-1 rounded bg-blue-600 text-white text-sm disabled:opacity-60"
+              >
+                {savingBio ? "Saving…" : "Save"}
+              </button>
+              <button
+                onClick={() => {
+                  setBio(displayBio);
+                  setIsEditingBio(false);
+                }}
+                className="px-4 py-1 rounded border text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Interests section */}
+      <div className="space-y-2">
+        <p className="text-sm text-gray-500">Interests</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {interests.map((interest, index) => (
+            <span
+              key={index}
+              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm flex items-center gap-2"
+            >
+              {interest}
+              <button
+                onClick={() => handleRemoveInterest(interest)}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            className="flex-1 border rounded px-3 py-2 text-sm"
+            value={newInterest}
+            onChange={(e) => setNewInterest(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAddInterest();
+              }
+            }}
+            placeholder="Add an interest..."
+          />
+          <button
+            onClick={handleAddInterest}
+            className="px-4 py-2 rounded bg-blue-600 text-white text-sm"
+          >
+            Add
+          </button>
+        </div>
       </div>
 
       {message && <p className="text-sm text-gray-700">{message}</p>}
