@@ -532,7 +532,7 @@ export default function EventPage() {
                       transition={{ duration: 0.5, delay: 0.3 }}
                     >
                       <h2 className="text-2xl font-bold text-foreground mb-1">
-                        Suggested for You
+                        AI Suggested Events
                       </h2>
                       {suggestedEventsLoading ? (
                         <p className="text-sm text-muted-foreground">
