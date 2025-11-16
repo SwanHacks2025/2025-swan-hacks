@@ -100,7 +100,6 @@ export function AuthModal({
       setStatus('Logged in! Redirecting…');
       setTimeout(() => {
         onClose();
-        router.push('/map');
       }, 500);
     } catch (err: any) {
       console.error(err);
@@ -142,7 +141,6 @@ export function AuthModal({
       setStatus('Account created! Redirecting…');
       setTimeout(() => {
         onClose();
-        router.push('/map');
       }, 500);
     } catch (err: any) {
       console.error(err);
@@ -173,7 +171,6 @@ export function AuthModal({
       setStatus('Signed in with Google! Redirecting…');
       setTimeout(() => {
         onClose();
-        router.push('/map');
       }, 500);
     } catch (err: any) {
       console.error(err);

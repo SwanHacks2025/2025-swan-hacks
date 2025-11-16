@@ -71,7 +71,9 @@ export default function EventPage() {
           // --- Filter 2: Category ---
           const categoryFilters = selectedFilters["Category"]
           if (categoryFilters && categoryFilters.size > 0) {
-            if (!categoryFilters.has(e.category.toString())) {
+            if (e.category && !categoryFilters.has(e.category.toString())) {
+              return false
+            } else if (!e.category) {
               return false
             }
           }

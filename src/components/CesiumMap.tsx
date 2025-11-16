@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import "@/lib/cesium-setup";
-import { useRef, useState, useEffect } from "react";
-import { Viewer, CesiumComponentRef } from "resium";
-import { fetchCommunityEvents, CommunityEvent } from "@/lib/firebaseEvents";
+import '@/lib/cesium-setup';
+import { useRef, useState, useEffect } from 'react';
+import { Viewer, CesiumComponentRef } from 'resium';
+import { fetchCommunityEvents, CommunityEvent } from '@/lib/firebaseEvents';
 import {
     Ion,
     Viewer as CesiumViewer,
@@ -25,8 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export async function createCircularImage(
-    url: string,
-    size = 128
+  url: string,
+  size = 128
 ): Promise<HTMLCanvasElement> {
     return new Promise((resolve) => {
         const img = new Image();
@@ -85,7 +85,7 @@ export async function createCircularImage(
 }
 
 interface CesiumMapProps {
-    onMarkerClick?: (markerId: string, markerData: any) => void;
+  onMarkerClick?: (markerId: string, markerData: any) => void;
 }
 
 // Initial camera position
@@ -99,8 +99,8 @@ const INITIAL_POSITION = {
 };
 
 export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
-    const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+  const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
 
     const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -197,9 +197,10 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
             }
         };
 
-        const timer = setTimeout(initViewer, 500);
-        return () => clearTimeout(timer);
-    }, [GOOGLE_KEY]);
+  // keep references to cleanup listener objects
+  const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
+  const postRenderListenerRef = useRef<(() => void) | null>(null);
+  const viewerReadyRef = useRef(false);
 
     useEffect(() => {
         let mounted = true;
@@ -340,9 +341,9 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
         const timer = setTimeout(loadMarkersFromFirestore, 1000);
 
-        return () => {
-            mounted = false;
-            clearTimeout(timer);
+      // Mark viewer as ready
+      viewerReadyRef.current = true;
+      console.log('Viewer is now ready, markers loaded');
 
             const viewer = viewerRef.current?.cesiumElement;
             if (postRenderListenerRef.current && viewer) {
@@ -440,6 +441,52 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         );
     }
 
+    // Create new handler with current onMarkerClick
+    console.log('Creating new click handler');
+    clickHandlerRef.current = new Cesium.ScreenSpaceEventHandler(
+      viewer.scene.canvas
+    );
+    clickHandlerRef.current.setInputAction((click: any) => {
+      console.log('Click detected on canvas');
+      const pickedObject = viewer.scene.pick(click.position);
+      console.log('Picked object:', pickedObject);
+
+      if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
+        const entity = pickedObject.id as any;
+        console.log('Entity clicked:', entity.id, entity._markerData);
+        console.log('onMarkerClick exists?', !!onMarkerClick);
+
+        if (onMarkerClick && entity._markerData) {
+          console.log(
+            'Calling onMarkerClick with:',
+            entity.id,
+            entity._markerData
+          );
+          onMarkerClick(entity.id, entity._markerData);
+        } else {
+          console.log(
+            'NOT calling onMarkerClick - callback:',
+            !!onMarkerClick,
+            'data:',
+            !!entity._markerData
+          );
+        }
+      } else {
+        console.log('No entity picked');
+      }
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // Cleanup on unmount or when onMarkerClick changes
+    return () => {
+      console.log('Cleaning up click handler');
+      if (clickHandlerRef.current) {
+        clickHandlerRef.current.destroy();
+        clickHandlerRef.current = null;
+      }
+    };
+  }, [onMarkerClick, viewerReadyRef.current]);
+
+  if (!ION_TOKEN) {
     return (
         <div style={{ width: "100%", height: "100%", position: "relative" }}>
             {/* Control Buttons */}
@@ -574,6 +621,42 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 sceneModePicker={false}
                 infoBox={false}
             />
+          </div>
+
+          <div
+            style={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '0.9rem',
+            }}
+          >
+            {loadingMessage}
+          </div>
+
+          <div
+            style={{
+              color: '#ffe3b3',
+              fontSize: '1.5rem',
+              marginTop: '1rem',
+              fontWeight: 'bold',
+            }}
+          >
+            {loadingProgress}%
+          </div>
         </div>
-    );
+      )}
+
+      <Viewer
+        ref={viewerRef}
+        full
+        baseLayerPicker={false}
+        timeline={false}
+        animation={false}
+        geocoder={false}
+        homeButton={false}
+        navigationHelpButton={false}
+        sceneModePicker={false}
+        infoBox={false}
+      />
+    </div>
+  );
 }

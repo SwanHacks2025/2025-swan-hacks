@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Search, UserPlus, Check, X, MessageCircle } from 'lucide-react';
-import { UserResult, Conversation } from '../types';
+import { Search, UserPlus, Check, X } from 'lucide-react';
+import { UserResult } from '../types';
 
 interface SearchTabProps {
   searchQuery: string;
@@ -16,10 +16,6 @@ interface SearchTabProps {
   onSendFriendRequest: (uid: string) => void;
   onAcceptRequest: (uid: string) => void;
   onDeclineRequest: (uid: string) => void;
-  onSelectChat: (conversation: Conversation) => void;
-  canMessageUser: (uid: string) => Promise<boolean>;
-  getChatId: (uid1: string, uid2: string) => string;
-  currentUserId: string;
 }
 
 export function SearchTab({
@@ -31,10 +27,6 @@ export function SearchTab({
   onSendFriendRequest,
   onAcceptRequest,
   onDeclineRequest,
-  onSelectChat,
-  canMessageUser,
-  getChatId,
-  currentUserId,
 }: SearchTabProps) {
   return (
     <div className="p-4 space-y-4">
@@ -51,7 +43,11 @@ export function SearchTab({
           }}
           className="flex-1"
         />
-        <Button onClick={onSearch} disabled={isSearching}>
+        <Button
+          onClick={onSearch}
+          disabled={isSearching}
+          className="cursor-pointer disabled:cursor-not-allowed"
+        >
           <Search className="w-4 h-4" />
         </Button>
       </div>
@@ -61,11 +57,17 @@ export function SearchTab({
           {searchResults.map((result) => (
             <div
               key={result.uid}
-              className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+              className="flex items-center justify-between p-3 rounded-lg border bg-card text-muted-foreground hover:text-foreground hover:bg-background/50 hover:border-primary/30 transition-all"
             >
               <Link
                 href={`/profile/${result.uid}`}
-                className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
+                className="flex items-center gap-3 flex-1 cursor-pointer"
+                onClick={() => {
+                  // Ensure modal state is saved when navigating to profile
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('friendsSearchModalOpen', 'true');
+                  }
+                }}
               >
                 <Avatar className="h-10 w-10">
                   {result.photoURL && <AvatarImage src={result.photoURL} />}
@@ -78,45 +80,33 @@ export function SearchTab({
                 </div>
               </Link>
               <div className="flex gap-2">
-                {/* Message button - show for friends, or for non-private accounts (even if request sent), or for private accounts that are friends */}
-                {((!result.isPrivate && (result.status === 'friends' || result.status === 'none' || result.status === 'sent')) || 
-                  (result.isPrivate && result.status === 'friends')) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const canMessage = await canMessageUser(result.uid);
-                      if (canMessage) {
-                        const chatId = getChatId(currentUserId, result.uid);
-                        onSelectChat({
-                          chatId,
-                          otherUser: result,
-                          lastMessage: '',
-                          lastMessageTime: null,
-                        });
-                      }
-                    }}
-                    title="Message"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                  </Button>
-                )}
                 {result.status === 'none' && (
                   <Button
                     size="sm"
                     onClick={() => onSendFriendRequest(result.uid)}
+                    className="cursor-pointer hover:scale-105 transition-transform"
                   >
                     <UserPlus className="w-4 h-4 mr-2" />
                     Add
                   </Button>
                 )}
                 {result.status === 'sent' && (
-                  <Button size="sm" variant="outline" disabled>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="disabled:cursor-not-allowed"
+                  >
                     Sent
                   </Button>
                 )}
                 {result.status === 'friends' && (
-                  <Button size="sm" variant="outline" disabled>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    className="disabled:cursor-not-allowed"
+                  >
                     Friends
                   </Button>
                 )}
@@ -125,6 +115,7 @@ export function SearchTab({
                     <Button
                       size="sm"
                       onClick={() => onAcceptRequest(result.uid)}
+                      className="cursor-pointer hover:scale-105 transition-transform"
                     >
                       <Check className="w-4 h-4 mr-2" />
                       Accept
@@ -133,6 +124,7 @@ export function SearchTab({
                       size="sm"
                       variant="outline"
                       onClick={() => onDeclineRequest(result.uid)}
+                      className="cursor-pointer hover:scale-105 transition-transform hover:bg-destructive/10 hover:border-destructive/50"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -148,10 +140,11 @@ export function SearchTab({
         </p>
       ) : (
         <p className="text-center text-muted-foreground py-8">
-          {isSearching ? 'Searching...' : 'All users will appear here. Use search to filter.'}
+          {isSearching
+            ? 'Searching...'
+            : 'All users will appear here. Use search to filter.'}
         </p>
       )}
     </div>
   );
 }
-

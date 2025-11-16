@@ -51,8 +51,8 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Show floating state when scrolled OR on the map page
-  const isFloating = isScrolled || pathname === '/map';
+  // Show floating state when scrolled OR on specific pages
+  const isFloating = isScrolled || pathname === '/map' || pathname === '/friends';
 
   // Load avatar the same way as ProfilePage
   React.useEffect(() => {
@@ -213,22 +213,22 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          className="inline-flex items-center justify-center gap-2 h-8 px-2 py-1 rounded-md hover:bg-primary/10 transition-colors cursor-pointer"
+                          className="inline-flex items-center justify-center gap-2.5 h-10 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
                           aria-label="Open user menu"
                         >
-                          <Avatar className="h-6 w-6">
+                          <Avatar className="h-8 w-8">
                             {avatarUrl && (
                               <AvatarImage
                                 key={avatarUrl} // 🔑 force re-mount when URL changes
                                 src={avatarUrl}
                               />
                             )}
-                            <AvatarFallback>
+                            <AvatarFallback className="text-xs font-semibold">
                               {displayName.charAt(0).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
 
-                          <span className="text-sm font-medium hidden sm:inline">
+                          <span className="text-sm font-semibold hidden sm:inline">
                             {displayName}
                           </span>
                         </button>

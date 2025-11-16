@@ -1,8 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { UserMinus } from 'lucide-react';
 import { UserResult, Conversation } from '../types';
 
 interface FriendsTabProps {
@@ -11,7 +9,6 @@ interface FriendsTabProps {
   selectedChatId: string | null;
   currentUserId: string;
   onSelectChat: (conversation: Conversation) => void;
-  onRemoveFriend: (friend: UserResult) => void;
   getChatId: (uid1: string, uid2: string) => string;
 }
 
@@ -21,18 +18,54 @@ export function FriendsTab({
   selectedChatId,
   currentUserId,
   onSelectChat,
-  onRemoveFriend,
   getChatId,
 }: FriendsTabProps) {
   // Combine friends and conversations with non-friends
-  const friendIds = new Set(friends.map(f => f.uid));
-  const nonFriendConversations = conversations.filter(c => !friendIds.has(c.otherUser.uid));
-  
-  // Create a combined list: friends first, then non-friend conversations
-  const allItems: Array<{ type: 'friend' | 'conversation'; data: UserResult | Conversation }> = [
-    ...friends.map(f => ({ type: 'friend' as const, data: f })),
-    ...nonFriendConversations.map(c => ({ type: 'conversation' as const, data: c }))
+  const friendIds = new Set(friends.map((f) => f.uid));
+  const nonFriendConversations = conversations.filter(
+    (c) => !friendIds.has(c.otherUser.uid)
+  );
+
+  // Create a unified list with both friends and conversations, sorted by last message time
+  const allItems: Array<{
+    type: 'friend' | 'conversation';
+    data: UserResult | Conversation;
+    lastMessageTime: number | null; // timestamp in milliseconds for sorting
+  }> = [
+    // Map friends to items with their conversation's lastMessageTime
+    ...friends.map((f) => {
+      const chatId = getChatId(currentUserId, f.uid);
+      const conversation = conversations.find((c) => c.chatId === chatId);
+      return {
+        type: 'friend' as const,
+        data: f,
+        lastMessageTime: conversation?.lastMessageTime
+          ? conversation.lastMessageTime.toMillis()
+          : null,
+      };
+    }),
+    // Map non-friend conversations
+    ...nonFriendConversations.map((c) => ({
+      type: 'conversation' as const,
+      data: c,
+      lastMessageTime: c.lastMessageTime ? c.lastMessageTime.toMillis() : null,
+    })),
   ];
+
+  // Sort by last message time (most recent first), then by type (friends with messages first)
+  allItems.sort((a, b) => {
+    // If both have lastMessageTime, sort by time (most recent first)
+    if (a.lastMessageTime && b.lastMessageTime) {
+      return b.lastMessageTime - a.lastMessageTime;
+    }
+    // If only one has lastMessageTime, prioritize it
+    if (a.lastMessageTime && !b.lastMessageTime) return -1;
+    if (!a.lastMessageTime && b.lastMessageTime) return 1;
+    // If neither has lastMessageTime, maintain original order (friends first)
+    if (a.type === 'friend' && b.type === 'conversation') return -1;
+    if (a.type === 'conversation' && b.type === 'friend') return 1;
+    return 0;
+  });
 
   if (allItems.length === 0) {
     return (
@@ -52,89 +85,78 @@ export function FriendsTab({
           const chatId = getChatId(currentUserId, friend.uid);
           const conversation = conversations.find((c) => c.chatId === chatId);
           return (
-            <div
+            <button
               key={friend.uid}
-              className={`w-full p-3 rounded-lg border transition-colors ${
-                selectedChatId === chatId ? 'bg-accent border-primary' : 'hover:bg-accent'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => onSelectChat(conversation || {
+              onClick={() =>
+                onSelectChat(
+                  conversation || {
                     chatId,
                     otherUser: friend,
                     lastMessage: '',
                     lastMessageTime: null,
-                  })}
-                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                >
-                  <Avatar className="h-12 w-12">
-                    {friend.photoURL && <AvatarImage src={friend.photoURL} />}
-                    <AvatarFallback>
-                      {friend.username.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground truncate">
-                      {friend.username}
+                  }
+                )
+              }
+              className={`w-full p-3 rounded-lg border transition-all text-left cursor-pointer ${
+                selectedChatId === chatId
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50 hover:border-primary/30'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  {friend.photoURL && <AvatarImage src={friend.photoURL} />}
+                  <AvatarFallback>
+                    {friend.username.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{friend.username}</p>
+                  {conversation?.lastMessage && (
+                    <p className="text-sm truncate opacity-70">
+                      {conversation.lastMessage}
                     </p>
-                    {conversation?.lastMessage && (
-                      <p className="text-sm text-foreground/80 truncate">
-                        {conversation.lastMessage}
-                      </p>
-                    )}
-                  </div>
-                </button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemoveFriend(friend);
-                  }}
-                  className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                  title="Remove friend"
-                >
-                  <UserMinus className="w-4 h-4" />
-                </Button>
+                  )}
+                </div>
               </div>
-            </div>
+            </button>
           );
         } else {
           const conversation = item.data as Conversation;
           return (
-            <div
+            <button
               key={conversation.chatId}
-              className={`w-full p-3 rounded-lg border transition-colors ${
-                selectedChatId === conversation.chatId ? 'bg-accent border-primary' : 'hover:bg-accent'
+              onClick={() => onSelectChat(conversation)}
+              className={`w-full p-3 rounded-lg border transition-all text-left cursor-pointer ${
+                selectedChatId === conversation.chatId
+                  ? 'bg-background text-primary shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50 hover:border-primary/30'
               }`}
             >
-              <button
-                onClick={() => onSelectChat(conversation)}
-                className="flex items-center gap-3 flex-1 min-w-0 text-left w-full"
-              >
+              <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
-                  {conversation.otherUser.photoURL && <AvatarImage src={conversation.otherUser.photoURL} />}
+                  {conversation.otherUser.photoURL && (
+                    <AvatarImage src={conversation.otherUser.photoURL} />
+                  )}
                   <AvatarFallback>
                     {conversation.otherUser.username.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">
+                  <p className="font-semibold truncate">
                     {conversation.otherUser.username}
                   </p>
                   {conversation.lastMessage && (
-                    <p className="text-sm text-foreground/80 truncate">
+                    <p className="text-sm truncate opacity-70">
                       {conversation.lastMessage}
                     </p>
                   )}
                 </div>
-              </button>
-            </div>
+              </div>
+            </button>
           );
         }
       })}
     </div>
   );
 }
-
