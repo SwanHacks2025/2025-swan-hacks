@@ -1,15 +1,16 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { Equal, X } from "lucide-react";
-import { Button } from "@/components/liquid-glass-button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import React from "react";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
-import { useAuth } from "@/lib/firebaseAuth";
-import { db } from "@/lib/firebaseClient";
-import { doc, getDoc } from "firebase/firestore";
+import Link from 'next/link';
+import { Equal, X } from 'lucide-react';
+import { Button } from '@/components/liquid-glass-button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import React from 'react';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import { useAuth } from '@/lib/firebaseAuth';
+import { db } from '@/lib/firebaseClient';
+import { doc, getDoc } from 'firebase/firestore';
+import { usePathname } from 'next/navigation';
 
 import {
   DropdownMenu,
@@ -18,18 +19,19 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ThemeToggle } from "@/components/theme-toggle";
+} from '@/components/ui/dropdown-menu';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const menuItems = [
-  { name: "Events", href: "#link" },
-  { name: "Clubs", href: "#link" },
-  { name: "About", href: "#link" },
+  { name: 'Map', href: '/map' },
+  { name: 'Events', href: '/events' },
+  { name: 'About', href: '/about' },
 ];
 
 export const Navbar = () => {
   const { user, loading, logout } = useAuth();
   const isSignedIn = !!user;
+  const pathname = usePathname();
 
   const [menuState, setMenuState] = React.useState(false);
   const [isScrolled, setIsScrolled] = React.useState(false);
@@ -39,9 +41,12 @@ export const Navbar = () => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Show floating state when scrolled OR on the map page
+  const isFloating = isScrolled || pathname === '/map';
 
   // Load avatar the same way as ProfilePage
   React.useEffect(() => {
@@ -52,7 +57,7 @@ export const Navbar = () => {
 
     const fetchAvatar = async () => {
       try {
-        const userRef = doc(db, "Users", user.uid);
+        const userRef = doc(db, 'Users', user.uid);
         const snap = await getDoc(userRef);
 
         if (snap.exists()) {
@@ -74,7 +79,7 @@ export const Navbar = () => {
           setAvatarUrl(user.photoURL || null);
         }
       } catch (err) {
-        console.error("Error loading navbar avatar:", err);
+        console.error('Error loading navbar avatar:', err);
         setAvatarUrl(user.photoURL || null);
       }
     };
@@ -82,19 +87,19 @@ export const Navbar = () => {
     fetchAvatar();
   }, [user]);
 
-  const displayName = user?.displayName || user?.email?.split("@")[0] || "User";
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
   return (
     <header>
       <nav
-        data-state={menuState && "active"}
+        data-state={menuState && 'active'}
         className="fixed left-0 w-full z-20 px-2"
       >
         <div
           className={cn(
-            "mx-auto max-w-6xl px-6 transition-all duration-300 lg:px-12",
-            isScrolled &&
-              "bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg mt-2 lg:px-5"
+            'mx-auto max-w-6xl px-6 transition-all duration-300 lg:px-12',
+            isFloating &&
+              'bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg mt-2 lg:px-5'
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2">
@@ -118,7 +123,7 @@ export const Navbar = () => {
 
               <button
                 onClick={() => setMenuState(!menuState)}
-                aria-label={menuState ? "Close Menu" : "Open Menu"}
+                aria-label={menuState ? 'Close Menu' : 'Open Menu'}
                 className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden"
               >
                 <Equal className="in-data-[state=active]:rotate-180 in-data-[state=active]:scale-0 in-data-[state=active]:opacity-0 m-auto size-6 duration-200" />
@@ -168,7 +173,7 @@ export const Navbar = () => {
                   <>
                     <Link href="/login">
                       <Button size="sm" variant="outline" disabled={loading}>
-                        <span>{loading ? "Loading…" : "Login"}</span>
+                        <span>{loading ? 'Loading…' : 'Login'}</span>
                       </Button>
                     </Link>
 
@@ -177,17 +182,7 @@ export const Navbar = () => {
                         <span>Sign Up</span>
                       </Button>
                     </Link>
-
                     <ThemeToggle />
-                    <Button
-                      asChild
-                      size="sm"
-                      className={cn(isScrolled ? "lg:inline-flex" : "hidden")}
-                    >
-                      <Link href="#">
-                        <span>Get Started</span>
-                      </Link>
-                    </Button>
                   </>
                 ) : (
                   <>
@@ -230,8 +225,6 @@ export const Navbar = () => {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-
-                    
                   </>
                 )}
               </div>

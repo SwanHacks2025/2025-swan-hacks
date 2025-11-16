@@ -18,6 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Gather Point',
   description: 'Where communities connect and experiences begin',
+  icons: {
+    icon: '/GatherPointLogo.svg',
+    shortcut: '/GatherPointLogo.svg',
+    apple: '/GatherPointLogo.svg',
+  },
 };
 
 export default function RootLayout({
