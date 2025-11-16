@@ -424,11 +424,11 @@ function MapPageContent() {
                   <div className="space-y-4">
                     {/* Image */}
                     {selectedMarker.imageUri && (
-                      <div className="relative w-full h-40 rounded-lg overflow-hidden">
+                      <div className="relative w-full h-40 rounded-lg overflow-hidden bg-muted/20 flex items-center justify-center">
                         <img
                           src={selectedMarker.imageUri}
                           alt={selectedMarker.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
