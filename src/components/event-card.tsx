@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
 import { CommunityEvent } from "@/lib/firebaseEvents";
@@ -9,8 +10,8 @@ export function EventCard({
     running: boolean
 }) {
     return (
-      <div>
-        <Card className="@container/card">
+      <Link href={`/events/${event.id}`}>
+        <Card className="@container/card hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 group-hover:shadow-xl group-hover:scale-[1.02] cursor-pointer">
           <CardHeader>
             <CardDescription>
               {event.category} Event
@@ -20,10 +21,10 @@ export function EventCard({
             </CardTitle>
             <CardAction>
             {running ? 
-              <Badge variant="outline" className="bg-chart-2">
+              <Badge variant="outline" className="bg-chart-2/16">
                 Organizing
               </Badge> : 
-              <Badge variant="outline" className="bg-chart-4">
+              <Badge variant="outline" className="bg-chart-4/16">
                 Attending
               </Badge> 
             }
@@ -41,6 +42,6 @@ export function EventCard({
             </div>
           </CardFooter>
         </Card>
-      </div>
+      </Link>
     )
 }
