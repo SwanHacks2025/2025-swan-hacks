@@ -216,6 +216,27 @@ export default function EventPage() {
     }
   }, [events]);
 
+  // Check if filters/search are active
+  const areFiltersActive = () => {
+    // Check search query
+    if (searchQuery.trim()) return true;
+
+    // Check date range
+    if (dateRange?.from || dateRange?.to) return true;
+
+    // Check category filters
+    const categoryFilters = selectedFilters['Category'];
+    if (categoryFilters && categoryFilters.size > 0) return true;
+
+    // Check attendance filters
+    if (user) {
+      const attendanceFilters = selectedFilters['Attendance'];
+      if (attendanceFilters && attendanceFilters.size > 0) return true;
+    }
+
+    return false;
+  };
+
   // Search filter function
   const searchFilter = (event: CommunityEvent) => {
     if (!searchQuery.trim()) return true;
@@ -322,8 +343,10 @@ export default function EventPage() {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     : [];
 
-  // Suggested events (filtered by search)
-  const filteredSuggestedEvents = suggestedEvents.filter(searchFilter);
+  // Suggested events (only show when no filters/search are active)
+  const filteredSuggestedEvents = areFiltersActive()
+    ? []
+    : suggestedEvents.filter(searchFilter);
 
   // Other events (excluding my events, but including suggested events for cross-listing)
   const otherEvents = user
@@ -519,7 +542,7 @@ export default function EventPage() {
                 )}
 
                 {/* Suggested Events Section */}
-                {user && (
+                {user && !areFiltersActive() && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -553,7 +576,7 @@ export default function EventPage() {
                       )}
                     </motion.div>
                     {filteredSuggestedEvents.length > 0 && (
-                      <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
                         {filteredSuggestedEvents.map((e, index) => (
                           <motion.div
                             key={e.id}
@@ -568,7 +591,6 @@ export default function EventPage() {
                               event={e}
                               user={user}
                               onRSVP={handleRSVP}
-                              compact
                             />
                           </motion.div>
                         ))}
