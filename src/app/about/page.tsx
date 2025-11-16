@@ -34,7 +34,7 @@ const creators = [
   {
     name: ' Cai Chen',
     avatar: 'https://avatars.githubusercontent.com/u/145074700',
-    bio: 'Software Engineer',
+    bio: 'Computer Engineer @ ISU',
     socials: {
       github: 'https://github.com/achen2304',
       linkedin: 'https://www.linkedin.com/in/achen2304/',
@@ -43,7 +43,7 @@ const creators = [
   {
     name: 'Mieszko Muskala',
     avatar: 'https://avatars.githubusercontent.com/u/92417405',
-    bio: 'Software Engineer',
+    bio: 'Mechanical Engineer @ ISU',
     socials: {
       github: 'https://github.com/MMoose16',
       linkedin: 'https://www.linkedin.com/in/mmuskala/',
@@ -52,7 +52,7 @@ const creators = [
   {
     name: 'Sean Krueger',
     avatar: 'https://avatars.githubusercontent.com/u/71362472',
-    bio: 'Software Engineer',
+    bio: 'Computer Engineer @ ISU',
     socials: {
       github: 'https://github.com/seakrueger',
       linkedin: 'https://www.linkedin.com/in/seankru/',
@@ -61,7 +61,7 @@ const creators = [
   {
     name: 'Josh Arceo ',
     avatar: 'https://avatars.githubusercontent.com/u/17519123',
-    bio: 'Software Engineer',
+    bio: 'Computer Engineer @ ISU',
     socials: {
       github: 'https://github.com/JoshuaArceo',
       linkedin: 'https://www.linkedin.com/in/joshuaarceo/',
