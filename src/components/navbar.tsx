@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Equal, X } from 'lucide-react';
+import { Equal, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/liquid-glass-button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import React from 'react';
@@ -102,9 +102,16 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
 
   return (
     <header>
+      {/* Mobile Menu Backdrop */}
+      {menuState && (
+        <div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[999] lg:hidden"
+          onClick={() => setMenuState(false)}
+        />
+      )}
       <nav
         data-state={menuState && 'active'}
-        className="fixed left-0 w-full z-1000 px-2 mt-2"
+        className="fixed left-0 w-full z-[1000] px-2 mt-2"
       >
         <div
           className={cn(
@@ -128,7 +135,10 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                   height={48}
                 />
                 <p className="font-semibold text-xl tracking-tighter text-foreground [font-family:var(--font-fugaz)]">
-                  Gather <span className="text-primary">P<span className="text-[#ff4958]">o</span>int</span>
+                  Gather{' '}
+                  <span className="text-primary">
+                    P<span className="text-[#ff4958]">o</span>int
+                  </span>
                 </p>
               </Link>
 
@@ -166,16 +176,33 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
             )}
 
             {/* Right side (auth, avatar, mobile menu) */}
-            <div className="bg-background in-data-[state=active]:block lg:in-data-[state=active]:flex mb-6 hidden w-full flex-wrap items-center justify-end space-y-8 rounded-3xl border p-6 shadow-2xl shadow-zinc-300/20 md:flex-nowrap lg:m-0 lg:flex lg:w-fit lg:gap-6 lg:space-y-0 lg:border-transparent lg:bg-transparent lg:p-0 lg:shadow-none dark:shadow-none dark:lg:bg-transparent">
-              {isSignedIn && (
-                <div className="lg:hidden">
-                  <ul className="space-y-2">
-                    {menuItems.map((item, index) => (
-                      <li key={index}>
+            <div
+              className={cn(
+                'hidden lg:flex lg:w-fit lg:gap-6 lg:items-center',
+                menuState && 'block w-full'
+              )}
+            >
+              {/* Mobile Menu Content */}
+              {menuState && (
+                <div
+                  className={cn(
+                    'lg:hidden w-full space-y-6 py-4',
+                    !isFloating &&
+                      'bg-background rounded-2xl border border-border p-6 shadow-lg'
+                  )}
+                >
+                  {/* Mobile Navigation Links */}
+                  {isSignedIn && (
+                    <div className="space-y-1">
+                      {menuItems.map((item, index) => (
                         <Link
+                          key={index}
                           href={item.href}
+                          onClick={() => {
+                            setMenuState(false);
+                          }}
                           className={cn(
-                            'block px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold cursor-pointer',
+                            'block px-4 py-3 rounded-lg transition-all duration-200 text-base font-semibold cursor-pointer',
                             pathname === item.href
                               ? 'text-primary bg-primary/15 shadow-sm'
                               : 'text-foreground/80 hover:text-primary hover:bg-primary/8'
@@ -183,13 +210,93 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                         >
                           {item.name}
                         </Link>
-                      </li>
-                    ))}
-                  </ul>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Mobile User Section */}
+                  {isSignedIn ? (
+                    <div className="space-y-3 pt-4 border-t border-border">
+                      {/* Profile Link */}
+                      <Link
+                        href="/profile"
+                        onClick={() => setMenuState(false)}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-primary/8 transition-colors cursor-pointer"
+                      >
+                        <Avatar className="h-10 w-10">
+                          {avatarUrl && (
+                            <AvatarImage key={avatarUrl} src={avatarUrl} />
+                          )}
+                          <AvatarFallback className="text-sm font-semibold">
+                            {displayName.charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            {displayName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            View Profile
+                          </p>
+                        </div>
+                      </Link>
+
+                      {/* Sign Out Link */}
+                      <button
+                        onClick={() => {
+                          setMenuState(false);
+                          logout();
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 rounded-lg hover:bg-red-500/10 transition-colors cursor-pointer text-red-500"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span className="text-base font-semibold">
+                          Sign Out
+                        </span>
+                      </button>
+
+                      {/* Theme Toggle */}
+                      <div className="px-4" onClick={() => setMenuState(false)}>
+                        <ThemeToggle />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pt-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={loading}
+                        onClick={() => {
+                          setMenuState(false);
+                          onLoginClick();
+                        }}
+                        className="w-full cursor-pointer"
+                      >
+                        <span>{loading ? 'Loading…' : 'Log In'}</span>
+                      </Button>
+
+                      <Button
+                        size="sm"
+                        disabled={loading}
+                        onClick={() => {
+                          setMenuState(false);
+                          onSignupClick();
+                        }}
+                        className="w-full cursor-pointer"
+                      >
+                        <span>Sign Up</span>
+                      </Button>
+
+                      <div className="px-4">
+                        <ThemeToggle />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-2 sm:space-y-0 md:w-fit">
+              {/* Desktop Auth Section */}
+              <div className="hidden lg:flex lg:items-center lg:gap-6">
                 {!isSignedIn ? (
                   <>
                     <Button
@@ -223,10 +330,7 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                         >
                           <Avatar className="h-8 w-8">
                             {avatarUrl && (
-                              <AvatarImage
-                                key={avatarUrl} // 🔑 force re-mount when URL changes
-                                src={avatarUrl}
-                              />
+                              <AvatarImage key={avatarUrl} src={avatarUrl} />
                             )}
                             <AvatarFallback className="text-xs font-semibold">
                               {displayName.charAt(0).toUpperCase()}
@@ -250,11 +354,9 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={logout}
-                          className="cursor-pointer"
+                          className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
                         >
-                          <Link href="/" className="cursor-pointer">
-                            Sign out
-                          </Link>
+                          Sign out
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
