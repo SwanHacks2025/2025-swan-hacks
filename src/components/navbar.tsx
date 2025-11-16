@@ -28,8 +28,13 @@ const menuItems = [
   { name: 'About', href: '/about' },
 ];
 
-export const Navbar = () => {
-  const { user, loading, logout } = useAuth();
+interface NavbarProps {
+  onLoginClick: () => void;
+  onSignupClick: () => void;
+}
+
+export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
+  const { user, loading, loginWithGoogle, logout } = useAuth();
   const isSignedIn = !!user;
   const pathname = usePathname();
 
@@ -181,17 +186,25 @@ export const Navbar = () => {
               <div className="flex w-full flex-col space-y-3 sm:flex-row sm:gap-2 sm:space-y-0 md:w-fit">
                 {!isSignedIn ? (
                   <>
-                    <Link href="/login">
-                      <Button size="sm" variant="outline" disabled={loading}>
-                        <span>{loading ? 'Loading…' : 'Login'}</span>
-                      </Button>
-                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loading}
+                      onClick={onLoginClick}
+                      className="cursor-pointer"
+                    >
+                      <span>{loading ? 'Loading…' : 'Log In'}</span>
+                    </Button>
 
-                    <Link href="/signup">
-                      <Button size="sm" disabled={loading}>
-                        <span>Sign Up</span>
-                      </Button>
-                    </Link>
+                    <Button
+                      size="sm"
+                      disabled={loading}
+                      onClick={onSignupClick}
+                      className="cursor-pointer"
+                    >
+                      <span>Sign Up</span>
+                    </Button>
+
                     <ThemeToggle />
                   </>
                 ) : (
