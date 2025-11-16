@@ -82,8 +82,200 @@ interface CesiumMapProps {
 }
 
 export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
-    const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+  const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+
+  const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('Initializing map...');
+
+  useEffect(() => {
+    console.log('Setting Ion token');
+    if (ION_TOKEN) {
+      Ion.defaultAccessToken = ION_TOKEN;
+    }
+  }, [ION_TOKEN]);
+
+  useEffect(() => {
+    console.log('Checking for viewer...');
+
+    const initViewer = async () => {
+      if (!viewerRef.current?.cesiumElement) {
+        console.log('Viewer not ready yet, waiting...');
+        return;
+      }
+
+      const viewer = viewerRef.current.cesiumElement;
+      console.log('=== VIEWER FOUND ===', viewer);
+
+      (viewer.cesiumWidget.creditContainer as any).style.display = "none";
+
+      try {
+        setLoadingMessage('Setting camera position...');
+        setLoadingProgress(20);
+
+        viewer.camera.setView({
+          destination: Cartesian3.fromDegrees(-93.647072, 42.015421, 1000),
+        });
+        console.log('Camera position set');
+
+        setLoadingMessage('Loading terrain...');
+        setLoadingProgress(40);
+        const terrain = await createWorldTerrainAsync();
+        viewer.terrainProvider = terrain;
+        console.log('Terrain loaded');
+
+        viewer.scene.globe.depthTestAgainstTerrain = true;
+
+        viewer.scene.globe.enableLighting = false; // Optional: better label visibility
+
+          // Use CartoDB labels - these have proper CORS headers
+          viewer.imageryLayers.addImageryProvider(
+              new Cesium.UrlTemplateImageryProvider({
+                  url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png',
+                  subdomains: ['a', 'b', 'c', 'd'],
+                  credit: 'Map tiles by CartoDB, under CC BY 3.0'
+              })
+          );
+
+        if (GOOGLE_KEY) {
+          setLoadingMessage('Loading Google 3D Tiles...');
+          setLoadingProgress(60);
+          console.log('Loading Google 3D Tiles...');
+
+          try {
+            const tileset = await createGooglePhotorealistic3DTileset({
+              key: GOOGLE_KEY,
+            });
+
+            console.log('Tileset created:', tileset);
+            viewer.scene.primitives.add(tileset);
+            console.log('Tileset added to scene');
+
+            setLoadingProgress(80);
+
+            setTimeout(() => {
+              viewer.camera.flyTo({
+                destination: Cartesian3.fromDegrees(
+                  -93.647072,
+                  42.015421,
+                  1000
+                ),
+                orientation: {
+                  heading: Cesium.Math.toRadians(0),
+                  pitch: Cesium.Math.toRadians(-45),
+                  roll: Cesium.Math.toRadians(0),
+                },
+                duration: 2,
+              });
+            }, 1000);
+          } catch (googleError: any) {
+            console.error('Google 3D Tiles error:', googleError);
+          }
+        }
+
+        setLoadingMessage('Loading markers...');
+        setLoadingProgress(90);
+      } catch (err: any) {
+        console.error('Initialization error:', err);
+        setLoadingMessage('Error loading map');
+      }
+    };
+
+    const timer = setTimeout(() => {
+      initViewer();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [GOOGLE_KEY]);
+
+  useEffect(() => {
+    let handler: Cesium.ScreenSpaceEventHandler | null = null;
+
+    const fetchMarkers = async () => {
+      const viewer = viewerRef.current?.cesiumElement;
+      if (!viewer) {
+        setTimeout(fetchMarkers, 100);
+        return;
+      }
+
+      // Check if markers already exist to prevent duplicate additions
+      if (viewer.entities.values.length > 0) {
+        console.log('Markers already loaded');
+        return;
+      }
+
+      const res = await fetch('/mock-markers.json');
+      const markers = await res.json();
+
+      for (const marker of markers) {
+        const pos = Cesium.Cartesian3.fromDegrees(
+          marker.longitude,
+          marker.latitude,
+          marker.height
+        );
+
+        const circleImage = await createCircularImage(marker.imageUri, 128);
+
+        const entity = viewer.entities.add({
+          id: marker.id,
+          name: marker.name,
+          position: pos,
+          model: {
+            uri: marker.modelUri,
+            scale: 1,
+            minimumPixelSize: 32,
+          },
+          billboard: {
+            image: circleImage,
+            scale: 0.5,
+            verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+            pixelOffset: new Cesium.Cartesian2(0, -40),
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          },
+        });
+        // Add custom properties after entity creation
+        (entity as any)._pos = pos;
+        (entity as any)._markerData = marker;
+      }
+
+      // Add click handler for entities
+      handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+      handler.setInputAction((click: any) => {
+        const pickedObject = viewer.scene.pick(click.position);
+
+        if (Cesium.defined(pickedObject) && Cesium.defined(pickedObject.id)) {
+          const entity = pickedObject.id as any;
+
+          // Call the callback if it exists
+          if (onMarkerClick && entity._markerData) {
+            onMarkerClick(entity.id, entity._markerData);
+          }
+        }
+      }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+      viewer.scene.postRender.addEventListener(() => {
+        const camera = viewer.camera;
+        const carto = Cesium.Ellipsoid.WGS84.cartesianToCartographic(
+          camera.position
+        );
+        let height = carto.height;
+
+        const minHeight = 500;
+        const maxHeight = 2000;
+
+        if (height < minHeight) {
+          carto.height = minHeight;
+          camera.position =
+            Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+        } else if (height > maxHeight) {
+          carto.height = maxHeight;
+          camera.position =
+            Cesium.Ellipsoid.WGS84.cartographicToCartesian(carto);
+        }
+
+        const cameraPos = viewer.camera.positionWC;
 
     const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -572,5 +764,20 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
                 infoBox={false}
             />
         </div>
-    );
+      )}
+
+      <Viewer
+        ref={viewerRef}
+        full
+        baseLayerPicker={false}
+        timeline={false}
+        animation={false}
+        geocoder={false}
+        homeButton={false}
+        navigationHelpButton={false}
+        sceneModePicker={false}
+        infoBox={false}
+      />
+    </div>
+  );
 }

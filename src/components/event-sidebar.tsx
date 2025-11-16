@@ -14,6 +14,7 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/components/ui/sidebar"
+import { EventDialog } from "./event-create"
 
 export function EventSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -29,10 +30,7 @@ export function EventSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton>
-              <Plus />
-              <span>Find new event</span>
-            </SidebarMenuButton>
+            <EventDialog />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
