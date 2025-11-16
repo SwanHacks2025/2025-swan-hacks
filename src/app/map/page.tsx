@@ -13,7 +13,7 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { auth, db } from '@/lib/firebaseClient';
 import { onAuthStateChanged, User } from '@firebase/auth';
-import { doc, updateDoc, arrayUnion, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -154,6 +154,7 @@ export default function MapPage() {
 
     try {
       const eventRef = doc(db, 'Events', selectedMarker.id);
+      const userRef = doc(db, 'Users', user.uid);
 
       if (isUnRSVP) {
         // Remove user from attendees
@@ -162,6 +163,11 @@ export default function MapPage() {
           [];
         await updateDoc(eventRef, {
           attendees: updatedAttendees,
+        });
+
+        // Remove event from user's rsvpEvents array
+        await updateDoc(userRef, {
+          rsvpEvents: arrayRemove(selectedMarker.id),
         });
 
         // Update local state
@@ -175,6 +181,11 @@ export default function MapPage() {
         // Add user to attendees
         await updateDoc(eventRef, {
           attendees: arrayUnion(user.uid),
+        });
+
+        // Add event to user's rsvpEvents array
+        await updateDoc(userRef, {
+          rsvpEvents: arrayUnion(selectedMarker.id),
         });
 
         // Update local state

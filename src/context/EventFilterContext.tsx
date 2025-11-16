@@ -18,6 +18,14 @@ export type EventFilterContextType = {
   // date range
   dateRange?: DateRange
   setDateRange: (range: DateRange | undefined) => void
+
+  // text search
+  searchText: string
+  setSearchText: (text: string) => void
+
+  // tag filters (for future use)
+  selectedTags: Set<string>
+  setSelectedTags: (tags: Set<string>) => void
 }
 
 const initialFilters: FilterCategory[] = [
@@ -39,6 +47,8 @@ export function EventFilterProvider({ children }: { children: ReactNode }) {
     initialFilters.forEach((f) => (init[f.name] = new Set()))
     return init
   })
+  const [searchText, setSearchText] = useState<string>("")
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set())
 
   const toggleFilter = (category: string, item: FilterItem) => {
     setSelectedFilters((prev) => {
@@ -56,7 +66,17 @@ export function EventFilterProvider({ children }: { children: ReactNode }) {
 
   return (
     <EventFilterContext.Provider
-      value={{ filters: initialFilters, dateRange, setDateRange, selectedFilters, toggleFilter }}
+      value={{
+        filters: initialFilters,
+        dateRange,
+        setDateRange,
+        selectedFilters,
+        toggleFilter,
+        searchText,
+        setSearchText,
+        selectedTags,
+        setSelectedTags,
+      }}
     >
       {children}
     </EventFilterContext.Provider>

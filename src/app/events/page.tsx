@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebaseClient';
 
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 import {
   CommunityEvent,
@@ -13,6 +13,7 @@ import {
   getEventTypeFilename,
   communityEventConverter,
 } from '@/lib/firebaseEvents';
+import { suggestEvents } from '@/lib/geminiSuggestService';
 import { EventCard } from '@/components/event-card';
 import { useEventFilter } from '@/context/EventFilterContext';
 import { Button } from '@/components/ui/button';
@@ -60,6 +61,8 @@ export default function EventPage() {
 
   const [events, setEvents] = useState<CommunityEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  const [suggestedEvents, setSuggestedEvents] = useState<CommunityEvent[]>([]);
+  const [suggestedEventsLoading, setSuggestedEventsLoading] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,6 +197,60 @@ export default function EventPage() {
       .finally(() => setEventsLoading(false));
   }, [user, dateRange, selectedFilters]);
 
+  // Function to fetch suggested events
+  const fetchSuggestedEvents = async () => {
+    if (!user) {
+      setSuggestedEvents([]);
+      return;
+    }
+
+    setSuggestedEventsLoading(true);
+    try {
+      const response = await suggestEvents(user.uid);
+      if (response.error) {
+        console.error('Error fetching suggestions:', response.error);
+        setSuggestedEvents([]);
+        return;
+      }
+
+      // Convert the response events to CommunityEvent objects
+      const events = response.events.map((e: any) => {
+        const eventDate = e.date ? new Date(e.date) : new Date();
+        const eventEndTime = e.endTime ? new Date(e.endTime) : undefined;
+
+        return {
+          id: e.id,
+          name: e.name,
+          description: e.description || '',
+          category: e.category,
+          lat: e.lat,
+          long: e.long,
+          location: e.location || '',
+          date: eventDate,
+          endTime: eventEndTime,
+          owner: e.owner,
+          attendees: e.attendees || [],
+          tags: e.tags || [],
+          imageUri: e.imageUri || '',
+          modelUri: e.modelUri || '',
+        } as CommunityEvent;
+      });
+
+      setSuggestedEvents(events);
+    } catch (error) {
+      console.error('Error fetching suggested events:', error);
+      setSuggestedEvents([]);
+    } finally {
+      setSuggestedEventsLoading(false);
+    }
+  };
+
+  // Fetch suggested events on mount and when user changes
+  useEffect(() => {
+    fetchSuggestedEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   // Fetch host names for search
   useEffect(() => {
     const fetchHostNames = async () => {
@@ -269,6 +326,7 @@ export default function EventPage() {
 
     try {
       const eventRef = doc(db, 'Events', eventId);
+      const userRef = doc(db, 'Users', user.uid);
 
       if (isUnRSVP) {
         // Remove user from attendees
@@ -276,6 +334,11 @@ export default function EventPage() {
           event.attendees?.filter((id) => id !== user.uid) || [];
         await updateDoc(eventRef, {
           attendees: updatedAttendees,
+        });
+
+        // Remove event from user's rsvpEvents array
+        await updateDoc(userRef, {
+          rsvpEvents: arrayRemove(eventId),
         });
 
         // Update local state
@@ -292,6 +355,11 @@ export default function EventPage() {
           attendees: arrayUnion(user.uid),
         });
 
+        // Add event to user's rsvpEvents array
+        await updateDoc(userRef, {
+          rsvpEvents: arrayUnion(eventId),
+        });
+
         // Update local state
         setEvents((prevEvents) =>
           prevEvents.map((e) =>
@@ -302,6 +370,9 @@ export default function EventPage() {
         );
 
         alert("Successfully RSVP'd to event!");
+        
+        // Refresh suggested events after RSVP
+        fetchSuggestedEvents();
       }
     } catch (error) {
       console.error('Error updating RSVP:', error);
@@ -393,11 +464,21 @@ export default function EventPage() {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     : [];
 
+  // Suggested events (filtered by search)
+  const filteredSuggestedEvents = suggestedEvents.filter(searchFilter);
+
+  // Other events (excluding my events, but including suggested events for cross-listing)
   const otherEvents = user
     ? events
         .filter((e) => e.owner !== user.uid && !e.attendees?.includes(user.uid))
         .filter(searchFilter)
-    : events.filter(searchFilter);
+        .concat(filteredSuggestedEvents.filter((se) => 
+          // Only add suggested events that aren't already in the main events list
+          !events.some((e) => e.id === se.id)
+        ))
+    : events.filter(searchFilter).concat(filteredSuggestedEvents.filter((se) => 
+        !events.some((e) => e.id === se.id)
+      ));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#028174]/10 via-background to-[#028174]/5">
@@ -734,6 +815,44 @@ export default function EventPage() {
                         />
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Suggested Events Section */}
+                {user && (
+                  <div>
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold text-foreground mb-1">
+                        Suggested for You
+                      </h2>
+                      {suggestedEventsLoading ? (
+                        <p className="text-sm text-muted-foreground">
+                          Loading suggestions...
+                        </p>
+                      ) : filteredSuggestedEvents.length > 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          {filteredSuggestedEvents.length}{' '}
+                          {filteredSuggestedEvents.length === 1 ? 'event' : 'events'} based on your interests
+                        </p>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          RSVP to some events to get personalized suggestions!
+                        </p>
+                      )}
+                    </div>
+                    {filteredSuggestedEvents.length > 0 && (
+                      <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
+                        {filteredSuggestedEvents.map((e) => (
+                          <EventCard
+                            key={e.id}
+                            event={e}
+                            user={user}
+                            onRSVP={handleRSVP}
+                            compact
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
