@@ -6,8 +6,6 @@ import {
   Calendar,
   Users,
   Github,
-  Twitter,
-  Instagram,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
@@ -42,31 +40,13 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a
-                href="https://github.com"
+                href="https://github.com/SwanHacks2025/2025-swan-hacks"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                 aria-label="GitHub"
               >
                 <Github className="h-5 w-5" />
-              </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                aria-label="Twitter"
-              >
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a
-                href="https://instagram.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-primary transition-colors cursor-pointer"
-                aria-label="Instagram"
-              >
-                <Instagram className="h-5 w-5" />
               </a>
             </div>
           </div>
