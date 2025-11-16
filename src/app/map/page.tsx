@@ -15,9 +15,13 @@ export default function MapPage() {
     const [selectedMarker, setSelectedMarker] = useState<any>(null);
 
     const handleMarkerClick = (markerId: string, markerData: any) => {
+        console.log('=== handleMarkerClick called ===');
         console.log('Marker clicked:', markerId, markerData);
+        console.log('Setting selectedMarker to:', markerData);
+        console.log('Setting sidebarOpen to: true');
         setSelectedMarker(markerData);
         setSidebarOpen(true);
+        console.log('State updates queued');
     };
 
     const DataRow = ({ label, value }: { label: string; value: any }) => (
