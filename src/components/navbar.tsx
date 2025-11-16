@@ -119,8 +119,9 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
             isFloating &&
               'bg-background/70 max-w-6xl rounded-2xl border border-border backdrop-blur-xl mt-2 lg:px-5 shadow-lg'
           )}
+          style={{ contain: 'layout style' }}
         >
-          <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2">
+          <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2 overflow-visible">
             {/* Logo + mobile menu button */}
             <div className="flex w-full justify-between lg:w-auto">
               <Link
@@ -296,7 +297,7 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
               )}
 
               {/* Desktop Auth Section */}
-              <div className="hidden lg:flex lg:items-center lg:gap-6">
+              <div className="hidden lg:flex lg:items-center lg:gap-6 relative">
                 {!isSignedIn ? (
                   <>
                     <Button
@@ -322,44 +323,52 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                   </>
                 ) : (
                   <>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="inline-flex items-center justify-center gap-2.5 h-10 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
-                          aria-label="Open user menu"
-                        >
-                          <Avatar className="h-8 w-8">
-                            {avatarUrl && (
-                              <AvatarImage key={avatarUrl} src={avatarUrl} />
-                            )}
-                            <AvatarFallback className="text-xs font-semibold">
-                              {displayName.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                    <div className="relative shrink-0">
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="inline-flex items-center justify-center gap-2.5 h-10 px-3 py-2 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 active:scale-100 will-change-auto"
+                            aria-label="Open user menu"
+                            type="button"
+                            style={{ minWidth: 'fit-content' }}
+                          >
+                            <Avatar className="h-8 w-8 shrink-0">
+                              {avatarUrl && (
+                                <AvatarImage key={avatarUrl} src={avatarUrl} />
+                              )}
+                              <AvatarFallback className="text-xs font-semibold">
+                                {displayName.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
 
-                          <span className="text-sm font-semibold hidden sm:inline">
-                            {displayName}
-                          </span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuLabel className="text-xs">
-                          {displayName}
-                        </DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href="/profile" className="cursor-pointer">
-                            Profile
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={logout}
-                          className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                            <span className="text-sm font-semibold hidden sm:inline whitespace-nowrap">
+                              {displayName}
+                            </span>
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-40 z-[1001]"
+                          sideOffset={4}
                         >
-                          Sign out
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <DropdownMenuLabel className="text-xs">
+                            {displayName}
+                          </DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href="/profile" className="cursor-pointer">
+                              Profile
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={logout}
+                            className="cursor-pointer text-red-500 focus:text-red-500 focus:bg-red-500/10"
+                          >
+                            Sign out
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                     <ThemeToggle />
                   </>
                 )}
