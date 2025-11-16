@@ -15,7 +15,7 @@ export function Footer() {
   const pathname = usePathname();
   const currentYear = new Date().getFullYear();
 
-  if (pathname === '/map') {
+  if (pathname === '/map' || pathname === '/friends') {
     return null;
   }
 
