@@ -207,32 +207,20 @@ export default function AboutPage() {
             className="space-y-6 text-lg text-muted-foreground leading-relaxed"
           >
             <p>
-              Gather Point was born from a simple observation: despite living in
-              vibrant cities surrounded by thousands of people, many of us feel
-              disconnected in our modern era. We spend hours scrolling through
-              social media, yet struggle to find genuine community in real life.
-            </p>
-            <p>
-              Our founders experienced this firsthand. After moving to a new
-              city, they found it surprisingly difficult to meet people who
-              shared their interests. The few platforms that existed were either
-              too focused on dating or felt corporate and impersonal. They
-              wanted a space designed purely for building community and creating
-              shared experiences.
-            </p>
-            <p>
-              So they built Gather Point. A platform where anyone can discover
-              what's happening around them, connect with people who share their
-              passions, and create the kinds of experiences that turn neighbors
-              into friends. Whether it's a weekend hiking group, a book club, a
-              coding workshop, or a neighborhood potluck, Gather Point makes it
-              easy to find your people and do what you love together.
-            </p>
-            <p>
-              Today, we're proud to help people rediscover the joy of in-person
-              connection. Every event created, every community formed, and every
-              friendship made on our platform reminds us why we started this
-              journey.
+              Gather Point was inspired by desire to foster community and action
+              within the Ames area and beyond. In the case of places like Ames,
+              a majority of residents are university students. Many of these
+              students are only here for about four years, resulting in a
+              constant flow of people new to the area, and those who are
+              familiar moving on and away. With this lack of consistent
+              presences on campus, an unfortunate result is that a large portion
+              of the population are perpetually unfamiliar with the area. This
+              led to the creation of Gather Point, an approachable and inviting
+              social good app. With the interactive 3D map to create, view, and
+              RSVP for events, the app fosters a greater cognitive sense of
+              familiarity, as people can rely on familiar looking buildings and
+              roads rather than requiring exact knowledge of the how's and
+              where's.
             </p>
           </motion.div>
         </div>
