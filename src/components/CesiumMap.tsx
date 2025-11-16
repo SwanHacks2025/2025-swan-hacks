@@ -39,12 +39,12 @@ export async function createCircularImage(
       // Calculate scaling to fit image within circle (object-fit: contain behavior)
       const imgAspect = img.width / img.height;
       const canvasAspect = size / size; // 1:1 for circle
-      
+
       let drawWidth = size;
       let drawHeight = size;
       let drawX = 0;
       let drawY = 0;
-      
+
       if (imgAspect > canvasAspect) {
         // Image is wider - fit to width
         drawHeight = size / imgAspect;
@@ -118,7 +118,7 @@ export interface CesiumMapRef {
 // Initial camera position
 const INITIAL_POSITION = {
   lon: -93.647072,
-  lat: 42.015421,
+  lat: 42.019421,
   height: 1000,
   heading: 0,
   pitch: -45,
