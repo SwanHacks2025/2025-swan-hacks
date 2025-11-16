@@ -10,7 +10,13 @@ import { useEffect, useState } from 'react';
 import { CommunityEvent, getCommunityEvent } from '@/lib/firebaseEvents';
 import React from 'react';
 import { db } from '@/lib/firebaseClient';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+} from 'firebase/firestore';
 import { Calendar, MapPin, User, Users, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/firebaseAuth';
 import { SpotlightBackground } from '@/components/spotlight-background';
@@ -190,10 +196,14 @@ export default function EventPage({
     ? `${new Date(communityEvent.date).toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-      })}${communityEvent.endTime ? ` - ${new Date(communityEvent.endTime).toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-      })}` : ''}`
+      })}${
+        communityEvent.endTime
+          ? ` - ${new Date(communityEvent.endTime).toLocaleTimeString('en-US', {
+              hour: 'numeric',
+              minute: '2-digit',
+            })}`
+          : ''
+      }`
     : '';
 
   return (
@@ -301,7 +311,9 @@ export default function EventPage({
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => router.push(`/map?event=${communityEvent.id}`)}
+                      onClick={() =>
+                        router.push(`/map?event=${communityEvent.id}`)
+                      }
                       className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
                     >
                       <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
@@ -319,8 +331,10 @@ export default function EventPage({
                       </Button>
                       <Button
                         variant="outline"
-                        onClick={() => router.push(`/map?event=${communityEvent.id}`)}
-                        className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                        onClick={() =>
+                          router.push(`/map?event=${communityEvent.id}`)
+                        }
+                        className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
                       >
                         <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
                         View on Map
@@ -344,7 +358,9 @@ export default function EventPage({
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => router.push(`/map?event=${communityEvent.id}`)}
+                      onClick={() =>
+                        router.push(`/map?event=${communityEvent.id}`)
+                      }
                       className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
                     >
                       <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
@@ -358,7 +374,9 @@ export default function EventPage({
             {!user && (
               <div className="mb-6">
                 <Button
-                  onClick={() => toast.error('Please sign in to RSVP to events')}
+                  onClick={() =>
+                    toast.error('Please sign in to RSVP to events')
+                  }
                   className="w-full bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold cursor-pointer"
                 >
                   Sign in to RSVP

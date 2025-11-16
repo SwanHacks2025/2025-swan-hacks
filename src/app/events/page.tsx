@@ -4,14 +4,17 @@ import { useEffect, useState } from 'react';
 import { db, auth } from '@/lib/firebaseClient';
 
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
+} from 'firebase/firestore';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-import {
-  CommunityEvent,
-  fetchCommunityEvents,
-} from '@/lib/firebaseEvents';
+import { CommunityEvent, fetchCommunityEvents } from '@/lib/firebaseEvents';
 import { suggestEvents } from '@/lib/geminiSuggestService';
 import { EventCard } from '@/components/event-card';
 import { EventDialog } from '@/components/event-create';
@@ -327,13 +330,20 @@ export default function EventPage() {
     ? events
         .filter((e) => e.owner !== user.uid && !e.attendees?.includes(user.uid))
         .filter(searchFilter)
-        .concat(filteredSuggestedEvents.filter((se) => 
-          // Only add suggested events that aren't already in the main events list
-          !events.some((e) => e.id === se.id)
-        ))
-    : events.filter(searchFilter).concat(filteredSuggestedEvents.filter((se) => 
-        !events.some((e) => e.id === se.id)
-      ));
+        .concat(
+          filteredSuggestedEvents.filter(
+            (se) =>
+              // Only add suggested events that aren't already in the main events list
+              !events.some((e) => e.id === se.id)
+          )
+        )
+    : events
+        .filter(searchFilter)
+        .concat(
+          filteredSuggestedEvents.filter(
+            (se) => !events.some((e) => e.id === se.id)
+          )
+        );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#028174]/10 via-background to-[#028174]/5">
@@ -360,7 +370,7 @@ export default function EventPage() {
                 <Button
                   variant="outline"
                   size="default"
-                  className="font-medium"
+                  className="font-medium cursor-pointer"
                 >
                   <Filter className="h-4 w-4 mr-2" />
                   Filters
@@ -531,7 +541,10 @@ export default function EventPage() {
                       ) : filteredSuggestedEvents.length > 0 ? (
                         <p className="text-sm text-muted-foreground">
                           {filteredSuggestedEvents.length}{' '}
-                          {filteredSuggestedEvents.length === 1 ? 'event' : 'events'} based on your interests
+                          {filteredSuggestedEvents.length === 1
+                            ? 'event'
+                            : 'events'}{' '}
+                          based on your interests
                         </p>
                       ) : (
                         <p className="text-sm text-muted-foreground">
@@ -546,7 +559,10 @@ export default function EventPage() {
                             key={e.id}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.4, delay: 0.3 + index * 0.05 }}
+                            transition={{
+                              duration: 0.4,
+                              delay: 0.3 + index * 0.05,
+                            }}
                           >
                             <EventCard
                               event={e}
@@ -588,13 +604,12 @@ export default function EventPage() {
                         key={e.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.5 + index * 0.05 }}
+                        transition={{
+                          duration: 0.4,
+                          delay: 0.5 + index * 0.05,
+                        }}
                       >
-                        <EventCard
-                          event={e}
-                          user={user}
-                          onRSVP={handleRSVP}
-                        />
+                        <EventCard event={e} user={user} onRSVP={handleRSVP} />
                       </motion.div>
                     ))}
                   </div>
