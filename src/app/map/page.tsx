@@ -58,7 +58,7 @@ export default function MapPage() {
               {/* Header */}
               <div className="flex justify-between items-center p-4 border-b border-border">
                 <h2 className="text-foreground font-semibold text-xl">
-                  Event Details
+                  Details
                 </h2>
 
                 <Button
@@ -72,7 +72,7 @@ export default function MapPage() {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-12">
+              <div className="flex-1 overflow-y-auto p-5">
                 {selectedMarker ? (
                   <div className="space-y-6 text-foreground">
                     {/* Title */}
@@ -89,46 +89,60 @@ export default function MapPage() {
                           src={selectedMarker.imageUri}
                           alt={selectedMarker.name}
                           className="
-                          w-60 h-60
-                          rounded-xl object-cover
-                          border border-border shadow-md
-                          "
+                                                        w-40 h-40
+                                                        rounded-xl object-cover
+                                                        border border-border shadow-md
+                                                    "
                         />
                       </div>
                     )}
 
                     {/* Data rows - using correct property names */}
-                    <div className="space-y-3 mt-12">
-                      <DataRow label="Hosted by" value={selectedMarker.owner} />
-                        {selectedMarker.date && (
-                            <DataRow
-                                label="Date"
-                                value={new Date(
-                                    selectedMarker.date
-                                ).toLocaleDateString()}
-                            />
-                        )}
+                    <div className="space-y-3">
+                      <DataRow label="ID" value={selectedMarker.id} />
                       <DataRow
-                        label="Address"
-                        value={selectedMarker.location}
+                        label="Latitude"
+                        value={selectedMarker.lat || selectedMarker.latitude}
+                      />
+                      <DataRow
+                        label="Longitude"
+                        value={selectedMarker.long || selectedMarker.longitude}
                       />
                       {selectedMarker.description && (
                         <div className="pt-3 border-t border-border">
-                          <p className="text-sm text-muted-foreground mb-1 mt-6">
-                            Event Description:
+                          <p className="text-sm text-muted-foreground mb-1">
+                            Description:
                           </p>
                           <p className="text-sm">
                             {selectedMarker.description}
                           </p>
                         </div>
                       )}
-                        <DataRow label="Attendees" value={selectedMarker.attendees.length} />
+                      {selectedMarker.date && (
+                        <DataRow
+                          label="Date"
+                          value={new Date(
+                            selectedMarker.date
+                          ).toLocaleDateString()}
+                        />
+                      )}
+                      {selectedMarker.createdBy && (
+                        <DataRow
+                          label="Created By"
+                          value={selectedMarker.createdBy}
+                        />
+                      )}
                     </div>
-                      <div className="flex justify-center mt-40">
-                          <Button className="p-6 bg-[#ff4958] hover:bg-[#d63e4b] text-2xl">
-                              Attend
-                          </Button>
-                      </div>
+
+                    {/* Debug: Show all data */}
+                    <details className="text-xs text-muted-foreground">
+                      <summary className="cursor-pointer hover:text-foreground">
+                        Debug: View all data
+                      </summary>
+                      <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-48">
+                        {JSON.stringify(selectedMarker, null, 2)}
+                      </pre>
+                    </details>
                   </div>
                 ) : (
                   <p className="text-muted-foreground">
