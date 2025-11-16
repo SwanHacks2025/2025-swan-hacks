@@ -21,10 +21,12 @@ export default function ProfilePage() {
   const [displayBio, setDisplayBio] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [newInterest, setNewInterest] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [savingUsername, setSavingUsername] = useState(false);
   const [savingBio, setSavingBio] = useState(false);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [message, setMessage] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export default function ProfilePage() {
             customPhotoURL?: string;
             bio?: string;
             interests?: string[];
+            isPrivate?: boolean;
           };
 
           const initialUsername =
@@ -70,6 +73,7 @@ export default function ProfilePage() {
           setBio(data.bio || "");
           setDisplayBio(data.bio || "");
           setInterests(data.interests || []);
+          setIsPrivate(data.isPrivate || false);
         } else {
           const fallbackName =
             user.displayName || user.email?.split("@")[0] || "NewUser";
@@ -79,6 +83,7 @@ export default function ProfilePage() {
           setBio("");
           setDisplayBio("");
           setInterests([]);
+          setIsPrivate(false);
         }
       } catch (err) {
         console.error(err);
@@ -134,13 +139,13 @@ export default function ProfilePage() {
   };
 
   // Save interests
-  const handleSaveInterests = async () => {
+  const handleSaveInterests = async (interestsToSave: string[]) => {
     if (!user) return;
     setMessage(null);
 
     try {
       const userRef = doc(db, "Users", user.uid);
-      await setDoc(userRef, { interests: interests }, { merge: true });
+      await setDoc(userRef, { interests: interestsToSave }, { merge: true });
       setMessage("Interests updated!");
     } catch (err) {
       console.error(err);
@@ -149,20 +154,39 @@ export default function ProfilePage() {
   };
 
   // Add interest
-  const handleAddInterest = () => {
+  const handleAddInterest = async () => {
     if (newInterest.trim() && !interests.includes(newInterest.trim())) {
       const updated = [...interests, newInterest.trim()];
       setInterests(updated);
       setNewInterest("");
-      handleSaveInterests();
+      await handleSaveInterests(updated);
     }
   };
 
   // Remove interest
-  const handleRemoveInterest = (interestToRemove: string) => {
+  const handleRemoveInterest = async (interestToRemove: string) => {
     const updated = interests.filter((i) => i !== interestToRemove);
     setInterests(updated);
-    handleSaveInterests();
+    await handleSaveInterests(updated);
+  };
+
+  // Save privacy setting
+  const handleSavePrivacy = async (privateValue: boolean) => {
+    if (!user) return;
+    setSavingPrivacy(true);
+    setMessage(null);
+
+    try {
+      const userRef = doc(db, "Users", user.uid);
+      await setDoc(userRef, { isPrivate: privateValue }, { merge: true });
+      setIsPrivate(privateValue);
+      setMessage("Privacy setting updated!");
+    } catch (err) {
+      console.error(err);
+      setMessage("Error saving privacy setting.");
+    } finally {
+      setSavingPrivacy(false);
+    }
   };
 
   // Upload new profile picture
@@ -350,6 +374,38 @@ export default function ProfilePage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Privacy section */}
+      <div className="space-y-2">
+        <p className="text-sm text-gray-500">Account Privacy</p>
+        <div className="flex items-center justify-between">
+          <div className="flex-1">
+            <p className="text-base font-medium">
+              {isPrivate ? "Private Account" : "Public Account"}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {isPrivate
+                ? "Only your friends can view your profile and message you"
+                : "Anyone can view your profile and message you"}
+            </p>
+          </div>
+          <button
+            onClick={() => handleSavePrivacy(!isPrivate)}
+            disabled={savingPrivacy}
+            className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+              isPrivate
+                ? "bg-gray-600 text-white hover:bg-gray-700"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            } disabled:opacity-60`}
+          >
+            {savingPrivacy
+              ? "Saving…"
+              : isPrivate
+              ? "Make Public"
+              : "Make Private"}
+          </button>
+        </div>
       </div>
 
       {/* Interests section */}
