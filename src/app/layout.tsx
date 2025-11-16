@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/context';
 import './globals.css';
 import { AuthProvider } from '@/lib/firebaseAuth';
+import { LayoutClient } from '@/components/layout-client';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -18,6 +18,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Gather Point',
   description: 'Where communities connect and experiences begin',
+  icons: {
+    icon: '/GatherPointLogo.svg',
+    shortcut: '/GatherPointLogo.svg',
+    apple: '/GatherPointLogo.svg',
+  },
 };
 
 export default function RootLayout({
@@ -32,8 +37,7 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <AuthProvider>
-            <Navbar />
-            {children}
+            <LayoutClient>{children}</LayoutClient>
           </AuthProvider>
         </ThemeProvider>
       </body>
