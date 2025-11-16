@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -6,13 +8,34 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 
 import ModelViewerClient from "./ModelViewerClient";
+import { useEffect, useState } from "react";
+import { CommunityEvent, getCommunityEvent } from "@/lib/firebaseEvents";
+import React from "react";
 
-export default async function EventPage({ params }: { params: { eventId: string } }) {
-  const event = null; //await getCommunityEvent(params.eventId);
-  if (!event) return notFound();
+export default function EventPage({ params }: { params: Promise<{ eventId: string }> }) {
+  const [loading, setLoading] = useState(true);
+  const [communityEvent, setEvents] = useState<CommunityEvent>();
+  
+  const { eventId } = React.use(params);
+
+  useEffect(() => {
+    getCommunityEvent(eventId)
+    .then((e) => {
+      if (e) {
+        setEvents(e);
+      } else {
+        console.warn("Event not found");
+      }
+    })
+    .catch(console.error)
+    .finally(() => setLoading(false));
+  }, [loading, eventId]);
+
+  if (loading) return (<p>Loading...</p>);
+  if (!communityEvent) return notFound(); 
 
   return (
-    <div className="container mx-auto max-w-7xl py-10">
+    <div className="container mx-auto max-w-7xl py-10 mt-11">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         
         {/* LEFT SIDE — Event Info */}
@@ -20,22 +43,22 @@ export default async function EventPage({ params }: { params: { eventId: string 
           <Card>
             <CardHeader>
               <CardTitle className="text-4xl font-bold flex justify-between">
-                {event.name}
+                {communityEvent.name}
                 <Badge variant="secondary" className="text-lg">
-                  {event.category}
+                  {communityEvent.category}
                 </Badge>
               </CardTitle>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              <p className="text-muted-foreground text-lg">{event.description}</p>
+              <p className="text-muted-foreground text-lg">{communityEvent.description}</p>
 
               <Separator />
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <InfoBlock label="Date" value={event.date.toString()} />
-                <InfoBlock label="Location" value={event.location} />
-                <InfoBlock label="Owner" value={event.owner} />
+                <InfoBlock label="Date" value={communityEvent.date.toString()} />
+                <InfoBlock label="Location" value={communityEvent.location} />
+                <InfoBlock label="Owner" value={communityEvent.owner} />
               </div>
 
               <Separator />
@@ -43,7 +66,7 @@ export default async function EventPage({ params }: { params: { eventId: string 
               <div>
                 <h3 className="font-semibold text-xl mb-2">Attendees</h3>
                 <div className="flex flex-wrap gap-2">
-                  {event.attendees.map((a) => (
+                  {communityEvent.attendees.map((a) => (
                     <Badge key={a} variant="outline">
                       {a}
                     </Badge>
@@ -54,7 +77,6 @@ export default async function EventPage({ params }: { params: { eventId: string 
           </Card>
         </div>
 
-        {/* RIGHT SIDE — Image + 3D Model */}
         <div className="flex flex-col gap-10">
           
           {/* Image */}
@@ -65,22 +87,13 @@ export default async function EventPage({ params }: { params: { eventId: string 
             <CardContent>
               <div className="relative w-full h-80 rounded-xl overflow-hidden shadow">
                 <Image
-                  src={event.imageUri}
-                  alt={event.name}
+                  src={communityEvent.imageUri}
+                  alt={communityEvent.name}
                   fill
+                  unoptimized
                   className="object-cover"
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* 3D Viewer */}
-          <Card className="h-[400px]">
-            <CardHeader>
-              <CardTitle>3D Model</CardTitle>
-            </CardHeader>
-            <CardContent className="h-full">
-              <ModelViewerClient modelUrl={event.modelUri} />
             </CardContent>
           </Card>
         </div>
