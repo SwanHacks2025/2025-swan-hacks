@@ -120,7 +120,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user || authLoading) {
       if (!authLoading && !user) {
-        router.push('/login');
+        router.push('/');
       }
       return;
     }

@@ -17,7 +17,7 @@ export function useFriendsAndRequests(
   useEffect(() => {
     if (!userId || authLoading) {
       if (!authLoading && !userId) {
-        router.push('/login');
+        router.push('/');
       }
       return;
     }
