@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/firebaseAuth';
 import { db } from '@/lib/firebaseClient';
@@ -44,14 +44,16 @@ interface Conversation {
   unreadCount?: number;
 }
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatIdParam = searchParams.get('chat');
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(chatIdParam);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(
+    chatIdParam
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
@@ -98,7 +100,8 @@ export default function MessagesPage() {
         lastMessage: '',
         lastMessageTime: null,
         otherUsername: otherUserData.Username || 'Unknown',
-        otherPhotoURL: otherUserData.customPhotoURL || otherUserData.photoURL || null,
+        otherPhotoURL:
+          otherUserData.customPhotoURL || otherUserData.photoURL || null,
       });
     }
   };
@@ -152,7 +155,9 @@ export default function MessagesPage() {
         conversationsSnap.forEach((docSnap) => {
           const data = docSnap.data();
           const participants = data.participants || [];
-          const otherUserId = participants.find((id: string) => id !== user.uid);
+          const otherUserId = participants.find(
+            (id: string) => id !== user.uid
+          );
           if (otherUserId) {
             conversationsMap.set(docSnap.id, {
               chatId: docSnap.id,
@@ -184,7 +189,8 @@ export default function MessagesPage() {
                 otherUser: {
                   uid: friendId,
                   username: friendData.Username || 'Unknown',
-                  photoURL: friendData.customPhotoURL || friendData.photoURL || null,
+                  photoURL:
+                    friendData.customPhotoURL || friendData.photoURL || null,
                 },
                 lastMessage: '',
                 lastMessageTime: null,
@@ -277,7 +283,8 @@ export default function MessagesPage() {
         lastMessage: messageText.trim(),
         lastMessageTime: serverTimestamp(),
         otherUsername: otherUserData.Username || 'Unknown',
-        otherPhotoURL: otherUserData.customPhotoURL || otherUserData.photoURL || null,
+        otherPhotoURL:
+          otherUserData.customPhotoURL || otherUserData.photoURL || null,
       };
 
       if (!conversationSnap.exists()) {
@@ -299,7 +306,6 @@ export default function MessagesPage() {
     }
   };
 
-
   // Handle chat selection
   const handleSelectChat = async (conversation: Conversation) => {
     setSelectedChatId(conversation.chatId);
@@ -308,7 +314,9 @@ export default function MessagesPage() {
     router.push(`/messages?chat=${conversation.chatId}`, { scroll: false });
   };
 
-  const selectedConversation = conversations.find((c) => c.chatId === selectedChatId);
+  const selectedConversation = conversations.find(
+    (c) => c.chatId === selectedChatId
+  );
 
   if (authLoading || loading) {
     return (
@@ -347,7 +355,9 @@ export default function MessagesPage() {
                           <AvatarImage src={conversation.otherUser.photoURL} />
                         )}
                         <AvatarFallback>
-                          {conversation.otherUser.username.charAt(0).toUpperCase()}
+                          {conversation.otherUser.username
+                            .charAt(0)
+                            .toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -393,14 +403,20 @@ export default function MessagesPage() {
                 </Button>
                 <Avatar className="h-10 w-10">
                   {selectedConversation.otherUser.photoURL && (
-                    <AvatarImage src={selectedConversation.otherUser.photoURL} />
+                    <AvatarImage
+                      src={selectedConversation.otherUser.photoURL}
+                    />
                   )}
                   <AvatarFallback>
-                    {selectedConversation.otherUser.username.charAt(0).toUpperCase()}
+                    {selectedConversation.otherUser.username
+                      .charAt(0)
+                      .toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold">{selectedConversation.otherUser.username}</p>
+                  <p className="font-semibold">
+                    {selectedConversation.otherUser.username}
+                  </p>
                 </div>
               </div>
 
@@ -415,7 +431,9 @@ export default function MessagesPage() {
                     return (
                       <div
                         key={message.id}
-                        className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                        className={`flex ${
+                          isOwn ? 'justify-end' : 'justify-start'
+                        }`}
                       >
                         <div
                           className={`max-w-[70%] rounded-lg px-4 py-2 ${
@@ -425,15 +443,18 @@ export default function MessagesPage() {
                           }`}
                         >
                           <p className="text-sm">{message.text}</p>
-                          {message.timestamp && formatTimestamp(message.timestamp) && (
-                            <p
-                              className={`text-xs mt-1 ${
-                                isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                              }`}
-                            >
-                              {formatTimestamp(message.timestamp)}
-                            </p>
-                          )}
+                          {message.timestamp &&
+                            formatTimestamp(message.timestamp) && (
+                              <p
+                                className={`text-xs mt-1 ${
+                                  isOwn
+                                    ? 'text-primary-foreground/70'
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                {formatTimestamp(message.timestamp)}
+                              </p>
+                            )}
                         </div>
                       </div>
                     );
@@ -462,7 +483,10 @@ export default function MessagesPage() {
                     }}
                     className="flex-1"
                   />
-                  <Button onClick={handleSendMessage} disabled={sending || !messageText.trim()}>
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={sending || !messageText.trim()}
+                  >
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
@@ -482,3 +506,19 @@ export default function MessagesPage() {
   );
 }
 
+export default function MessagesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50 animate-pulse" />
+            <p className="text-muted-foreground">Loading messages...</p>
+          </div>
+        </div>
+      }
+    >
+      <MessagesPageContent />
+    </Suspense>
+  );
+}
