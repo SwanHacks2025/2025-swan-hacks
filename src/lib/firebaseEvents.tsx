@@ -1,10 +1,14 @@
+import { ca } from "date-fns/locale";
 import {
     getFirestore,
     collection,
     getDocs,
     FirestoreDataConverter,
-    QueryDocumentSnapshot
+    QueryDocumentSnapshot,
+    doc,
+    getDoc
 } from "firebase/firestore";
+import { ValueOf } from "resium";
 
 export enum EventTypes {
     NO_CATEGORY,
@@ -12,6 +16,32 @@ export enum EventTypes {
     SPORTS = 'Sports',
     TUTORING = 'Tutoring'
 }
+
+export function getEventTypeFilename(category: EventTypes): string {
+  switch (category) {
+    case EventTypes.VOLUNTEER:
+      return "/models/VolunteeringMarker.glb";
+    case EventTypes.SPORTS:
+      return "/models/SportsMarker.glb";
+    case EventTypes.TUTORING:
+      return "/models/TutoringMarker.glb";
+    default:
+        return "";
+  }
+}
+
+function getEventTypeName(category: EventTypes) {
+    switch (category) {
+        case EventTypes.VOLUNTEER:
+          return "VOLUNTEER";
+        case EventTypes.SPORTS:
+          return "SPORTS";
+        case EventTypes.TUTORING:
+          return "TUTORING";
+        default:
+            return "NO_CATEGORY";
+    }
+} 
 
 export class CommunityEvent {
     id: string
@@ -51,7 +81,7 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
         return {
             name: event.name,
             description: event.description,
-            category: event.category,
+            category: getEventTypeName(event.category),
             lat: event.lat,
             long: event.long,
             location: event.location,
@@ -97,4 +127,14 @@ export async function fetchCommunityEventsByUserId(id: string): Promise<Communit
     const snapshot = await getDocs(eventsRef);
 
     return snapshot.docs.map(doc => doc.data()).filter(data => data.owner == id || (data.attendees && data.attendees.includes(id)));
+}
+
+export async function getCommunityEvent(id: string): Promise<CommunityEvent | null> {
+    const db = getFirestore();
+
+    const eventsRef = doc(db, "Events", id)
+        .withConverter(communityEventConverter);
+
+    const snapshot = await getDoc(eventsRef);
+    return snapshot.exists() ? snapshot.data() : null
 }
