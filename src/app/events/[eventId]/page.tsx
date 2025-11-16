@@ -11,7 +11,7 @@ import { CommunityEvent, getCommunityEvent } from '@/lib/firebaseEvents';
 import React from 'react';
 import { db } from '@/lib/firebaseClient';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
-import { Calendar, MapPin, User, Users } from 'lucide-react';
+import { Calendar, MapPin, User, Users, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/firebaseAuth';
 import { SpotlightBackground } from '@/components/spotlight-background';
 import { toast } from 'sonner';
@@ -200,11 +200,28 @@ export default function EventPage({
     <SpotlightBackground>
       <main className="min-h-screen pt-20 md:pt-28 pb-8 px-4 md:px-6">
         <div className="max-w-4xl mx-auto w-full">
+          {/* Back Button */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3 }}
+            className="mb-4"
+          >
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="gap-2 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          </motion.div>
+
           {/* Single Floating Island Container */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg p-4 md:p-6 relative z-20 w-full"
           >
             {/* Header with Image and Title */}
