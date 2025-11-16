@@ -33,36 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, UserPlus, Check, X, Users, MessageCircle, Send, UserMinus } from 'lucide-react';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-
-type FriendRequestStatus = 'none' | 'sent' | 'received' | 'friends';
-
-interface UserResult {
-  uid: string;
-  username: string;
-  photoURL: string | null;
-  status: FriendRequestStatus;
-}
-
-interface Message {
-  id: string;
-  text: string;
-  senderId: string;
-  receiverId: string;
-  timestamp: Timestamp | null;
-}
-
-interface Conversation {
-  chatId: string;
-  otherUser: {
-    uid: string;
-    username: string;
-    photoURL: string | null;
-  };
-  lastMessage: string;
-  lastMessageTime: Timestamp | null;
-}
+import { Search, UserPlus, Users } from 'lucide-react';
+import { UserResult, Message, Conversation, FriendRequestStatus } from './types';
+import { SearchTab } from './components/SearchTab';
+import { FriendsTab } from './components/FriendsTab';
+import { RequestsTab } from './components/RequestsTab';
+import { ChatPanel } from './components/ChatPanel';
 
 export default function FriendsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -120,6 +96,12 @@ export default function FriendsPage() {
       const otherUserRef = doc(db, 'Users', otherUserId);
       const otherUserSnap = await getDoc(otherUserRef);
       const otherUserData = otherUserSnap.exists() ? otherUserSnap.data() : {};
+
+      // Verify they can message each other
+      const canMessage = await canMessageUser(otherUserId);
+      if (!canMessage) {
+        throw new Error('You cannot message this user.');
+      }
 
       await setDoc(conversationRef, {
         participants: [user.uid, otherUserId],
@@ -204,16 +186,17 @@ export default function FriendsPage() {
         // Update search results with current sent requests status
         setSearchResults((prev) =>
           prev.map((result) => {
+            let newStatus: FriendRequestStatus = result.status;
             if (sentRequests.includes(result.uid)) {
-              return { ...result, status: 'sent' };
+              newStatus = 'sent';
+            } else if (friendsList.includes(result.uid)) {
+              newStatus = 'friends';
+            } else if (receivedRequests.includes(result.uid)) {
+              newStatus = 'received';
+            } else {
+              newStatus = 'none';
             }
-            if (friendsList.includes(result.uid)) {
-              return { ...result, status: 'friends' };
-            }
-            if (receivedRequests.includes(result.uid)) {
-              return { ...result, status: 'received' };
-            }
-            return { ...result, status: 'none' };
+            return { ...result, status: newStatus };
           })
         );
         
@@ -227,11 +210,13 @@ export default function FriendsPage() {
     return () => unsubscribe();
   }, [user, authLoading, router]);
 
-  // Load conversations
+  // Load conversations with real-time updates
   useEffect(() => {
-    if (!user || !authLoading) return;
+    if (!user || authLoading) return;
 
-    const loadConversations = async () => {
+    let unsubscribe: (() => void) | undefined;
+
+    const setupConversations = async () => {
       try {
         // Get user's friends
         const userRef = doc(db, 'Users', user.uid);
@@ -240,76 +225,160 @@ export default function FriendsPage() {
 
         const userData = userSnap.data();
         const friends = userData.friends || [];
+        const isCurrentUserOrganizer = userData.organizer || false;
+        const isCurrentUserPrivate = userData.isPrivate || false;
 
-        // Load all conversations
+        // Set up real-time listener for conversations
         const conversationsRef = collection(db, 'conversations');
         const conversationsQuery = query(
           conversationsRef,
           where('participants', 'array-contains', user.uid)
         );
 
-        const conversationsSnap = await getDocs(conversationsQuery);
-        const conversationsMap = new Map<string, Conversation>();
+        unsubscribe = onSnapshot(conversationsQuery, async (snapshot) => {
+          // Get fresh friends list each time
+          const currentUserRef = doc(db, 'Users', user.uid);
+          const currentUserSnap = await getDoc(currentUserRef);
+          const currentUserData = currentUserSnap.exists() ? currentUserSnap.data() : {};
+          const currentFriends = currentUserData.friends || [];
 
-        // Process existing conversations
-        conversationsSnap.forEach((docSnap) => {
-          const data = docSnap.data();
-          const participants = data.participants || [];
-          const otherUserId = participants.find((id: string) => id !== user.uid);
-          if (otherUserId) {
-            conversationsMap.set(docSnap.id, {
-              chatId: docSnap.id,
-              otherUser: {
-                uid: otherUserId,
-                username: data.otherUsername || 'Unknown',
-                photoURL: data.otherPhotoURL || null,
-              },
-              lastMessage: data.lastMessage || '',
-              lastMessageTime: data.lastMessageTime || null,
-            });
-          }
-        });
+          const conversationsMap = new Map<string, Conversation>();
 
-        // Create conversations for friends who don't have one yet
-        const conversationsList: Conversation[] = [];
-        for (const friendId of friends) {
-          const chatId = getChatId(user.uid, friendId);
-          if (conversationsMap.has(chatId)) {
-            conversationsList.push(conversationsMap.get(chatId)!);
-          } else {
-            // Load friend data
-            const friendRef = doc(db, 'Users', friendId);
-            const friendSnap = await getDoc(friendRef);
-            if (friendSnap.exists()) {
-              const friendData = friendSnap.data();
-              conversationsList.push({
-                chatId,
+          // Process existing conversations - load other user's data fresh
+          const conversationPromises = snapshot.docs.map(async (docSnap) => {
+            const data = docSnap.data();
+            const participants = data.participants || [];
+            const otherUserId = participants.find((id: string) => id !== user.uid);
+            if (otherUserId) {
+              // Load other user's data fresh to avoid stale/wrong data
+              const otherUserRef = doc(db, 'Users', otherUserId);
+              const otherUserSnap = await getDoc(otherUserRef);
+              const otherUserData = otherUserSnap.exists() ? otherUserSnap.data() : {};
+              
+              return {
+                chatId: docSnap.id,
                 otherUser: {
-                  uid: friendId,
-                  username: friendData.Username || 'Unknown',
-                  photoURL: friendData.customPhotoURL || friendData.photoURL || null,
+                  uid: otherUserId,
+                  username: otherUserData.Username || 'Unknown',
+                  photoURL: otherUserData.customPhotoURL || otherUserData.photoURL || null,
                 },
-                lastMessage: '',
-                lastMessageTime: null,
-              });
+                lastMessage: data.lastMessage || '',
+                lastMessageTime: data.lastMessageTime || null,
+              };
+            }
+            return null;
+          });
+          
+          const conversationResults = await Promise.all(conversationPromises);
+          conversationResults.forEach((conv) => {
+            if (conv) {
+              conversationsMap.set(conv.chatId, conv);
+            }
+          });
+
+          // Create conversations for friends who don't have one yet
+          const conversationsList: Conversation[] = [];
+          for (const friendId of currentFriends) {
+            const chatId = getChatId(user.uid, friendId);
+            if (conversationsMap.has(chatId)) {
+              conversationsList.push(conversationsMap.get(chatId)!);
+            } else {
+              // Load friend data
+              const friendRef = doc(db, 'Users', friendId);
+              const friendSnap = await getDoc(friendRef);
+              if (friendSnap.exists()) {
+                const friendData = friendSnap.data();
+                conversationsList.push({
+                  chatId,
+                  otherUser: {
+                    uid: friendId,
+                    username: friendData.Username || 'Unknown',
+                    photoURL: friendData.customPhotoURL || friendData.photoURL || null,
+                  },
+                  lastMessage: '',
+                  lastMessageTime: null,
+                });
+              }
             }
           }
-        }
 
-        // Sort by last message time
-        conversationsList.sort((a, b) => {
-          if (!a.lastMessageTime) return 1;
-          if (!b.lastMessageTime) return -1;
-          return b.lastMessageTime.toMillis() - a.lastMessageTime.toMillis();
+          // Also include conversations with organizers (even if not friends)
+          // Process conversations that already exist and check for organizers or public/private rules
+          for (const [chatId, conversation] of conversationsMap.entries()) {
+            const otherUserId = conversation.otherUser.uid;
+            if (!currentFriends.includes(otherUserId)) {
+              // Check if other user is an organizer or if messaging is allowed by privacy rules
+              const otherUserRef = doc(db, 'Users', otherUserId);
+              const otherUserSnap = await getDoc(otherUserRef);
+              if (otherUserSnap.exists()) {
+                const otherUserData = otherUserSnap.data();
+                const isOtherUserOrganizer = otherUserData.organizer || false;
+                const isOtherUserPrivate = otherUserData.isPrivate || false;
+                
+                // Add if organizer
+                if (isOtherUserOrganizer || isCurrentUserOrganizer) {
+                  if (!conversationsList.find((c) => c.chatId === chatId)) {
+                    conversationsList.push(conversation);
+                  }
+                }
+                // Add if private account messaged public account
+                else if (isCurrentUserPrivate && !isOtherUserPrivate) {
+                  if (!conversationsList.find((c) => c.chatId === chatId)) {
+                    conversationsList.push(conversation);
+                  }
+                }
+                // Add if public account has conversation with private account
+                // (If conversation exists, private account must have messaged first, so public can see it)
+                else if (!isCurrentUserPrivate && isOtherUserPrivate) {
+                  // Public account can always see conversations with private accounts
+                  // because the only way the conversation exists is if private account messaged first
+                  if (!conversationsList.find((c) => c.chatId === chatId)) {
+                    conversationsList.push(conversation);
+                  }
+                }
+                // Add if both are private and the other user messaged first
+                else if (isCurrentUserPrivate && isOtherUserPrivate) {
+                  // Check if there are messages from the other user
+                  const messagesRef = collection(db, 'conversations', chatId, 'messages');
+                  const messagesQuery = query(messagesRef, where('senderId', '==', otherUserId), limit(1));
+                  const messagesSnap = await getDocs(messagesQuery);
+                  
+                  if (!messagesSnap.empty) {
+                    // Other user has sent a message, so we can see this conversation
+                    if (!conversationsList.find((c) => c.chatId === chatId)) {
+                      conversationsList.push(conversation);
+                    }
+                  }
+                }
+                // Add if both are public accounts
+                else if (!isCurrentUserPrivate && !isOtherUserPrivate) {
+                  if (!conversationsList.find((c) => c.chatId === chatId)) {
+                    conversationsList.push(conversation);
+                  }
+                }
+              }
+            }
+          }
+
+          // Sort by last message time
+          conversationsList.sort((a, b) => {
+            if (!a.lastMessageTime) return 1;
+            if (!b.lastMessageTime) return -1;
+            return b.lastMessageTime.toMillis() - a.lastMessageTime.toMillis();
+          });
+
+          setConversations(conversationsList);
         });
-
-        setConversations(conversationsList);
       } catch (err) {
         console.error('Error loading conversations:', err);
       }
     };
 
-    loadConversations();
+    setupConversations();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [user, authLoading]);
 
   // Load and listen to messages for selected chat
@@ -358,13 +427,14 @@ export default function FriendsPage() {
       const querySnapshot = await getDocs(q);
       const results: UserResult[] = [];
 
-      // Get current user's data to check friend status
+      // Get current user's data to check friend status and organizer status
       const currentUserRef = doc(db, 'Users', user.uid);
       const currentUserSnap = await getDoc(currentUserRef);
       const currentUserData = currentUserSnap.exists() ? currentUserSnap.data() : {};
       const currentFriends = currentUserData.friends || [];
       const sentRequests = currentUserData.sentFriendRequests || [];
       const receivedRequests = currentUserData.receivedFriendRequests || [];
+      const isCurrentUserOrganizer = currentUserData.organizer || false;
 
       querySnapshot.forEach((docSnap) => {
         const data = docSnap.data();
@@ -379,6 +449,10 @@ export default function FriendsPage() {
           return;
         }
 
+        const isOtherUserOrganizer = data.organizer || false;
+        const isOtherUserPrivate = data.isPrivate || false;
+        const isCurrentUserPrivate = currentUserData.isPrivate || false;
+
         let status: FriendRequestStatus = 'none';
         if (currentFriends.includes(uid)) {
           status = 'friends';
@@ -387,12 +461,17 @@ export default function FriendsPage() {
         } else if (receivedRequests.includes(uid)) {
           status = 'received';
         }
+        // Note: We don't set status to 'friends' for messaging permissions
+        // Only actual friends should have 'friends' status
 
         results.push({
           uid,
           username: data.Username || 'Unknown',
           photoURL: data.customPhotoURL || data.photoURL || null,
           status,
+          isPrivate: isOtherUserPrivate,
+          isOrganizer: isOtherUserOrganizer,
+          canMessage: false, // Will be determined when rendering
         });
       });
 
@@ -463,22 +542,18 @@ export default function FriendsPage() {
       const conversationRef = doc(db, 'conversations', chatId);
       const conversationSnap = await getDoc(conversationRef);
 
-      // Get other user's info
-      const otherUserRef = doc(db, 'Users', receiverId);
-      const otherUserSnap = await getDoc(otherUserRef);
-      const otherUserData = otherUserSnap.exists() ? otherUserSnap.data() : {};
-
-      const conversationData = {
-        participants: [user.uid, receiverId],
-        lastMessage: messageText.trim(),
-        lastMessageTime: serverTimestamp(),
-        otherUsername: otherUserData.Username || 'Unknown',
-        otherPhotoURL: otherUserData.customPhotoURL || otherUserData.photoURL || null,
-      };
-
       if (!conversationSnap.exists()) {
+        // Only set other user info when creating the conversation
+        // We'll load it fresh when displaying, so we don't need to store it
+        const conversationData = {
+          participants: [user.uid, receiverId],
+          lastMessage: messageText.trim(),
+          lastMessageTime: serverTimestamp(),
+        };
         await setDoc(conversationRef, conversationData);
       } else {
+        // Just update the last message, don't update other user info
+        // (it might be from the other user's perspective)
         await updateDoc(conversationRef, {
           lastMessage: messageText.trim(),
           lastMessageTime: serverTimestamp(),
@@ -491,6 +566,73 @@ export default function FriendsPage() {
     } finally {
       setSending(false);
     }
+  };
+
+  // Check if user can message another user (friends, organizer, or public/private rules)
+  const canMessageUser = async (otherUserId: string): Promise<boolean> => {
+    if (!user) return false;
+    
+    const currentUserRef = doc(db, 'Users', user.uid);
+    const otherUserRef = doc(db, 'Users', otherUserId);
+    
+    const [currentUserSnap, otherUserSnap] = await Promise.all([
+      getDoc(currentUserRef),
+      getDoc(otherUserRef),
+    ]);
+    
+    if (!currentUserSnap.exists() || !otherUserSnap.exists()) return false;
+    
+    const currentUserData = currentUserSnap.data();
+    const otherUserData = otherUserSnap.data();
+    
+    const isCurrentUserOrganizer = currentUserData.organizer || false;
+    const isOtherUserOrganizer = otherUserData.organizer || false;
+    const isFriend = (currentUserData.friends || []).includes(otherUserId);
+    const isCurrentUserPrivate = currentUserData.isPrivate || false;
+    const isOtherUserPrivate = otherUserData.isPrivate || false;
+    
+    // Organizers can always message
+    if (isCurrentUserOrganizer || isOtherUserOrganizer) {
+      return true;
+    }
+    
+    // Friends can always message each other
+    if (isFriend) {
+      return true;
+    }
+    
+    // Private accounts can message public accounts
+    if (isCurrentUserPrivate && !isOtherUserPrivate) {
+      return true;
+    }
+    
+    // Public accounts can message private accounts only if the private account messaged them first
+    // Private accounts can message private accounts if the other private account messaged them first
+    // Check if there's an existing conversation where the other user sent a message first
+    if ((!isCurrentUserPrivate && isOtherUserPrivate) || (isCurrentUserPrivate && isOtherUserPrivate)) {
+      const chatId = getChatId(user.uid, otherUserId);
+      const conversationRef = doc(db, 'conversations', chatId);
+      const conversationSnap = await getDoc(conversationRef);
+      
+      if (conversationSnap.exists()) {
+        // Check if there are any messages from the other user
+        const messagesRef = collection(db, 'conversations', chatId, 'messages');
+        const messagesQuery = query(messagesRef, where('senderId', '==', otherUserId), limit(1));
+        const messagesSnap = await getDocs(messagesQuery);
+        
+        if (!messagesSnap.empty) {
+          return true; // Other user has sent a message, so we can reply
+        }
+      }
+      return false; // Cannot message private account that hasn't messaged first
+    }
+    
+    // Public accounts can message other public accounts
+    if (!isCurrentUserPrivate && !isOtherUserPrivate) {
+      return true;
+    }
+    
+    return false;
   };
 
   // Handle chat selection
@@ -703,315 +845,59 @@ export default function FriendsPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Search Tab */}
           {activeTab === 'search' && (
-            <div className="p-4 space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  placeholder="Search by username..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSearch();
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button onClick={handleSearch} disabled={isSearching}>
-                  <Search className="w-4 h-4" />
-                </Button>
-              </div>
-
-              {searchResults.length > 0 ? (
-                <div className="space-y-2">
-                  {searchResults.map((result) => (
-                    <div
-                      key={result.uid}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
-                    >
-                      <Link
-                        href={`/profile/${result.uid}`}
-                        className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
-                      >
-                        <Avatar className="h-10 w-10">
-                          {result.photoURL && <AvatarImage src={result.photoURL} />}
-                          <AvatarFallback>
-                            {result.username.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{result.username}</p>
-                        </div>
-                      </Link>
-                      <div>
-                        {result.status === 'none' && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleSendFriendRequest(result.uid)}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Add
-                          </Button>
-                        )}
-                        {result.status === 'sent' && (
-                          <Button size="sm" variant="outline" disabled>
-                            Sent
-                          </Button>
-                        )}
-                        {result.status === 'friends' && (
-                          <Button size="sm" variant="outline" disabled>
-                            Friends
-                          </Button>
-                        )}
-                        {result.status === 'received' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptRequest(result.uid)}
-                            >
-                              <Check className="w-4 h-4 mr-2" />
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeclineRequest(result.uid)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : searchQuery ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No users found. Try a different search term.
-                </p>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  {isSearching ? 'Searching...' : 'All users will appear here. Use search to filter.'}
-                </p>
-              )}
-            </div>
+            <SearchTab
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              searchResults={searchResults}
+              isSearching={isSearching}
+              onSearch={handleSearch}
+              onSendFriendRequest={handleSendFriendRequest}
+              onAcceptRequest={handleAcceptRequest}
+              onDeclineRequest={handleDeclineRequest}
+              onSelectChat={handleSelectChat}
+              canMessageUser={canMessageUser}
+              getChatId={getChatId}
+              currentUserId={user?.uid || ''}
+            />
           )}
-
-          {/* Friends Tab */}
           {activeTab === 'friends' && (
-            <div className="space-y-2 p-4">
-              {friends.length > 0 ? (
-                friends.map((friend) => {
-                  const chatId = getChatId(user.uid, friend.uid);
-                  const conversation = conversations.find((c) => c.chatId === chatId);
-                  return (
-                    <div
-                      key={friend.uid}
-                      className={`w-full p-3 rounded-lg border transition-colors ${
-                        selectedChatId === chatId ? 'bg-accent border-primary' : 'hover:bg-accent'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleSelectChat(conversation || {
-                            chatId,
-                            otherUser: friend,
-                            lastMessage: '',
-                            lastMessageTime: null,
-                          })}
-                          className="flex items-center gap-3 flex-1 min-w-0 text-left"
-                        >
-                          <Avatar className="h-12 w-12">
-                            {friend.photoURL && <AvatarImage src={friend.photoURL} />}
-                            <AvatarFallback>
-                              {friend.username.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-foreground truncate">
-                              {friend.username}
-                            </p>
-                            {conversation?.lastMessage && (
-                              <p className="text-sm text-foreground/80 truncate">
-                                {conversation.lastMessage}
-                              </p>
-                            )}
-                          </div>
-                        </button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFriendToRemove(friend);
-                            setRemoveFriendDialogOpen(true);
-                          }}
-                          className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                          title="Remove friend"
-                        >
-                          <UserMinus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  You don't have any friends yet. Search for users to add them!
-                </p>
-              )}
-            </div>
+            <FriendsTab
+              friends={friends}
+              conversations={conversations}
+              selectedChatId={selectedChatId}
+              currentUserId={user?.uid || ''}
+              onSelectChat={handleSelectChat}
+              onRemoveFriend={(friend) => {
+                setFriendToRemove(friend);
+                setRemoveFriendDialogOpen(true);
+              }}
+              getChatId={getChatId}
+            />
           )}
-
-          {/* Requests Tab */}
           {activeTab === 'requests' && (
-            <div className="space-y-2 p-4">
-              {friendRequests.length > 0 ? (
-                friendRequests.map((request) => (
-                  <div
-                    key={request.uid}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        {request.photoURL && <AvatarImage src={request.photoURL} />}
-                        <AvatarFallback>
-                          {request.username.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{request.username}</p>
-                        <p className="text-sm text-muted-foreground">wants to be your friend</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => handleAcceptRequest(request.uid)}
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Accept
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeclineRequest(request.uid)}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  No pending friend requests.
-                </p>
-              )}
-            </div>
+            <RequestsTab
+              friendRequests={friendRequests}
+              onAcceptRequest={handleAcceptRequest}
+              onDeclineRequest={handleDeclineRequest}
+            />
           )}
         </div>
       </div>
 
       {/* Right Side - Chat Interface */}
       <div className="flex-1 flex flex-col">
-        {selectedChatId && selectedConversation ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 border-b flex items-center gap-3 bg-card sticky top-0 z-10">
-              <Avatar className="h-10 w-10">
-                {selectedConversation.otherUser.photoURL && (
-                  <AvatarImage src={selectedConversation.otherUser.photoURL} />
-                )}
-                <AvatarFallback>
-                  {selectedConversation.otherUser.username.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <Link
-                  href={`/profile/${selectedConversation.otherUser.uid}`}
-                  className="font-semibold text-foreground hover:text-primary transition-colors"
-                >
-                  {selectedConversation.otherUser.username}
-                </Link>
-              </div>
-            </div>
-
-            {/* Messages */}
-            <div
-              ref={messagesContainerRef}
-              className="flex-1 overflow-y-auto p-4 space-y-4"
-            >
-              {messages.length > 0 ? (
-                messages.map((message) => {
-                  const isOwn = message.senderId === user.uid;
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                          isOwn
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted/80 text-foreground border border-border/50'
-                        }`}
-                      >
-                        <p className="text-base font-medium leading-relaxed">{message.text}</p>
-                        {message.timestamp && formatTimestamp(message.timestamp) && (
-                          <p
-                            className={`text-xs mt-1.5 font-medium ${
-                              isOwn 
-                                ? 'text-primary-foreground/90' 
-                                : 'text-foreground/70'
-                            }`}
-                          >
-                            {formatTimestamp(message.timestamp)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <p>No messages yet. Start the conversation!</p>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  placeholder="Type a message..."
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button onClick={handleSendMessage} disabled={sending || !messageText.trim()}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p>Select a friend to start messaging</p>
-            </div>
-          </div>
-        )}
+        <ChatPanel
+          selectedChatId={selectedChatId}
+          selectedConversation={selectedConversation}
+          messages={messages}
+          messageText={messageText}
+          setMessageText={setMessageText}
+          sending={sending}
+          onSendMessage={handleSendMessage}
+          formatTimestamp={formatTimestamp}
+          currentUserId={user?.uid || ''}
+        />
       </div>
 
       {/* Remove Friend Confirmation Dialog */}

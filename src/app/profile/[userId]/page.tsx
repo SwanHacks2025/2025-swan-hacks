@@ -70,23 +70,22 @@ export default function ViewProfilePage() {
         }
 
         const profileData = profileSnap.data();
-        setProfileUser({
-          uid: userId,
-          username: profileData.Username || 'Unknown',
-          photoURL: profileData.customPhotoURL || profileData.photoURL || null,
-          bio: profileData.bio || '',
-          interests: profileData.interests || [],
-        });
+        const isProfilePrivate = profileData.isPrivate || false;
 
         // Check friend status
         const currentUserRef = doc(db, 'Users', user.uid);
         const currentUserSnap = await getDoc(currentUserRef);
         
+        let canViewProfile = false;
+        let friends: string[] = [];
+        let sentRequests: string[] = [];
+        let receivedRequests: string[] = [];
+        
         if (currentUserSnap.exists()) {
           const currentUserData = currentUserSnap.data();
-          const friends = currentUserData.friends || [];
-          const sentRequests = currentUserData.sentFriendRequests || [];
-          const receivedRequests = currentUserData.receivedFriendRequests || [];
+          friends = currentUserData.friends || [];
+          sentRequests = currentUserData.sentFriendRequests || [];
+          receivedRequests = currentUserData.receivedFriendRequests || [];
 
           if (friends.includes(userId)) {
             setFriendStatus('friends');
@@ -97,7 +96,23 @@ export default function ViewProfilePage() {
           } else {
             setFriendStatus('none');
           }
+
+          // Can view profile if: public account OR (private account AND is friend)
+          canViewProfile = !isProfilePrivate || friends.includes(userId);
+        } else {
+          // If current user data doesn't exist, can only view if public
+          canViewProfile = !isProfilePrivate;
         }
+
+        setProfileUser({
+          uid: userId,
+          username: profileData.Username || 'Unknown',
+          photoURL: profileData.customPhotoURL || profileData.photoURL || null,
+          bio: canViewProfile ? (profileData.bio || '') : '',
+          interests: canViewProfile ? (profileData.interests || []) : [],
+          isPrivate: isProfilePrivate,
+          canViewProfile,
+        });
       } catch (err) {
         console.error('Error loading profile:', err);
       } finally {
@@ -307,8 +322,17 @@ export default function ViewProfilePage() {
           </div>
         </div>
 
+        {/* Privacy Notice */}
+        {profileUser.isPrivate && !profileUser.canViewProfile && (
+          <div className="space-y-2 p-4 bg-muted rounded-lg">
+            <p className="text-muted-foreground text-center">
+              This is a private account. Only friends can view their profile information.
+            </p>
+          </div>
+        )}
+
         {/* Bio Section */}
-        {profileUser.bio && (
+        {profileUser.canViewProfile && profileUser.bio && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Bio</h2>
             <p className="text-muted-foreground whitespace-pre-wrap">
@@ -318,7 +342,7 @@ export default function ViewProfilePage() {
         )}
 
         {/* Interests Section */}
-        {profileUser.interests && profileUser.interests.length > 0 && (
+        {profileUser.canViewProfile && profileUser.interests && profileUser.interests.length > 0 && (
           <div className="space-y-2">
             <h2 className="text-xl font-semibold">Interests</h2>
             <div className="flex flex-wrap gap-2">
