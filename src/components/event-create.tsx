@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateTimePicker } from "./date-time-picker";
+import { CommunityEvent, EventTypes } from "@/lib/firebaseEvents";
 
 type NominatimResult = {
   display_name: string;
@@ -42,6 +43,7 @@ export function EventDialog() {
   const [debouncedAddress, setDebouncedAddress] = useState("");
   const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
   const [isAddressOpen, setIsAddressOpen] = useState(false);
+  const [addressError, setAddressError] = useState("");
 
   // Debounce address input (~1s)
   useEffect(() => {
@@ -97,9 +99,75 @@ export function EventDialog() {
     setIsAddressOpen(false);
   };
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setAddressError("");
+
+    // If user did NOT choose from the dropdown, re-fetch address
+    if (!lat || !lon) {
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`
+        );
+
+        const results = await res.json();
+
+        if (!results || results.length === 0) {
+          setAddressError("Address not found. Please select a valid address.");
+          return;
+        }
+
+        // take best match
+        setLat(results[0].lat);
+        setLon(results[0].lon);
+      } catch (err) {
+        setAddressError("Failed to look up address.");
+        return;
+      }
+    }
+
+    // After validation, we can assemble the event object:
+    const formData = new FormData(e.currentTarget);
+
+    const name = formData.get("name") as string;
+    const description = formData.get("description") as string;
+    const category = formData.get("category") as EventTypes;
+    const locationStr = formData.get("address") as string;
+    const dateStr = formData.get("date") as string;   // you may adjust depending on DateTimePicker
+    const timeStr = formData.get("time") as string;
+  
+    // Combine date + time into Date object
+    const date = new Date(`${dateStr}T${timeStr}`);
+
+    // Owner & attendees default
+    const owner = "CURRENT_USER_UID";     // replace with auth user.uid
+    const attendees: string[] = [];       // default empty
+
+    // Create CommunityEvent object
+    const event = new CommunityEvent(
+      crypto.randomUUID(),        // id
+      name,
+      description,
+      category,
+      parseFloat(lat),
+      parseFloat(lon),
+      locationStr,
+      date,
+      owner,
+      attendees
+    );
+
+    console.log("Created Event:", event);
+  
+    // optionally send to Firestore...
+    // await addDoc(collection(db, "Events"), event)
+  
+    // Close modal etc.
+  };
+
   return (
     <Dialog>
-      <form>
+      <form onSubmit={handleSubmit}>
         <DialogTrigger asChild>
           <SidebarMenuButton>
             <Plus />
@@ -189,6 +257,10 @@ export function EventDialog() {
                       </button>
                     ))}
                   </div>
+                )}
+
+                {addressError && (
+                  <p className="text-sm text-red-500">{addressError}</p>
                 )}
               </div>
             </div>
