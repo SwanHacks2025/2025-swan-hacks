@@ -13,10 +13,11 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-import { CommunityEvent, fetchCommunityEvents, fetchCommunityEventsByUserId } from "@/lib/firebaseEvents";
+import { CommunityEvent, EventTypes, fetchCommunityEvents, fetchCommunityEventsByUserId } from "@/lib/firebaseEvents";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { EventCard } from "@/components/event-card";
+import { useEventFilter } from "@/context/EventFilterContext"
 
 export default function EventPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -25,6 +26,8 @@ export default function EventPage() {
 
   const [events, setEvents] = useState<CommunityEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
+  
+  const { dateRange, selectedFilters } = useEventFilter()
 
   // Listen for auth state
   useEffect(() => {
@@ -50,18 +53,60 @@ export default function EventPage() {
 
     return () => unsub();
   }, []);
-  
+    
   useEffect(() => {
-    if (!loading && user) {
-      fetchCommunityEventsByUserId(user.uid)
-        .then((events) => setEvents(events))
-        .catch((err) => console.error(err))
-        .finally(() => setEventsLoading(false));
-    }
-  }, [loading, user]);
+    if (!user || loading) return
+
+    setEventsLoading(true)
+
+    fetchCommunityEventsByUserId(user.uid)
+      .then((events: CommunityEvent[]) => {
+        return events.filter((e) => {
+          // --- Filter 1: Date Range ---
+          if (dateRange?.from || dateRange?.to) {
+            const time = e.date.getTime()
+            const from = dateRange.from?.getTime() ?? -Infinity
+            const to = dateRange.to?.getTime() ?? Infinity
+            if (time <= from || time >= to) return false
+          }
+
+          // --- Filter 2: Category ---
+          const categoryFilters = selectedFilters["Category"]
+          if (categoryFilters && categoryFilters.size > 0) {
+            if (!Array.from(categoryFilters).includes(e.category as EventTypes)) {
+              return false
+            }
+          }
+
+          // --- Filter 3: Attendance ---
+          const attendanceFilters = selectedFilters["Attendance"]
+          if (attendanceFilters && attendanceFilters.size > 0) {
+            const isOwner = e.owner === user.uid
+            const isAttendee = e.attendees ? e.attendees.includes(user.uid) : false
+
+            if (attendanceFilters.has("Organizing") && attendanceFilters.has("Attendee")) {
+              return isOwner || isAttendee
+            } else if (attendanceFilters.has("Organizing")) {
+              return isOwner
+            } else if (attendanceFilters.has("Attendee")) {
+              return isAttendee
+            }
+
+            return false
+          }
+
+          // --- Other filters could go here if needed ---
+
+          return true
+        })
+      })
+      .then(setEvents)
+      .catch(console.error)
+      .finally(() => setEventsLoading(false))
+  }, [loading, user, dateRange, selectedFilters])
 
   if (loading) {
-    return <p className="p-4 mt-10">Loading profile…</p>;
+    return ;
   }
 
   if (!user) {
@@ -81,21 +126,23 @@ export default function EventPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col">
-        <div className="@container/main flex flex-1 flex-col gap-2">
-          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-            <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-2">
-              {eventsLoading ? (
-                <p>Loading events…</p>
-              ) : (
-                events.map((e) => (
-                  <EventCard key={e.id} event={e} running={e.owner == user.uid} />
-                ))
-              )}
+      {loading ? <p className="p-4 mt-10">Loading profile…</p> :
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-2">
+                {eventsLoading ? (
+                  <p>Loading events…</p>
+                ) : (
+                  events.map((e) => (
+                    <EventCard key={e.id} event={e} running={e.owner == user.uid} />
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      }
     </div>
   );
 }
