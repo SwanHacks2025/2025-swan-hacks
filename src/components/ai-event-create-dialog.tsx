@@ -70,6 +70,33 @@ export function AIEventCreateDialog({
     if (catLower.includes('volunteer')) return EventTypes.VOLUNTEER;
     if (catLower.includes('sport')) return EventTypes.SPORTS;
     if (catLower.includes('tutor')) return EventTypes.TUTORING;
+    if (catLower.includes('art') || catLower.includes('craft'))
+      return EventTypes.ARTS;
+    if (catLower.includes('yoga')) return EventTypes.YOGA;
+    if (catLower.includes('book') || catLower.includes('reading'))
+      return EventTypes.BOOKS;
+    if (
+      catLower.includes('workshop') ||
+      catLower.includes('learning') ||
+      catLower.includes('class')
+    )
+      return EventTypes.WORKSHOP;
+    if (catLower.includes('music') || catLower.includes('concert'))
+      return EventTypes.MUSIC;
+    if (catLower.includes('hang') || catLower.includes('social'))
+      return EventTypes.HANGOUT;
+    if (
+      catLower.includes('outdoor') ||
+      catLower.includes('nature') ||
+      catLower.includes('hiking')
+    )
+      return EventTypes.OUTDOORS;
+    if (
+      catLower.includes('food') ||
+      catLower.includes('dining') ||
+      catLower.includes('restaurant')
+    )
+      return EventTypes.FOOD;
     return EventTypes.VOLUNTEER;
   };
 
@@ -290,6 +317,30 @@ export function AIEventCreateDialog({
                     </SelectItem>
                     <SelectItem value={EventTypes.TUTORING.toString()}>
                       Tutoring
+                    </SelectItem>
+                    <SelectItem value={EventTypes.ARTS.toString()}>
+                      Arts & Crafts
+                    </SelectItem>
+                    <SelectItem value={EventTypes.YOGA.toString()}>
+                      Yoga
+                    </SelectItem>
+                    <SelectItem value={EventTypes.BOOKS.toString()}>
+                      Book Club
+                    </SelectItem>
+                    <SelectItem value={EventTypes.WORKSHOP.toString()}>
+                      Workshop & Learning
+                    </SelectItem>
+                    <SelectItem value={EventTypes.MUSIC.toString()}>
+                      Music & Concert
+                    </SelectItem>
+                    <SelectItem value={EventTypes.HANGOUT.toString()}>
+                      Hang-out
+                    </SelectItem>
+                    <SelectItem value={EventTypes.OUTDOORS.toString()}>
+                      Outdoors & Nature
+                    </SelectItem>
+                    <SelectItem value={EventTypes.FOOD.toString()}>
+                      Food & Dining
                     </SelectItem>
                   </SelectGroup>
                 </SelectContent>

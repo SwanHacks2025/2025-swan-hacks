@@ -271,6 +271,30 @@ export function EventDialog() {
                     <SelectItem value={EventTypes.TUTORING.toString()}>
                       Tutoring
                     </SelectItem>
+                    <SelectItem value={EventTypes.ARTS.toString()}>
+                      Arts & Crafts
+                    </SelectItem>
+                    <SelectItem value={EventTypes.YOGA.toString()}>
+                      Yoga
+                    </SelectItem>
+                    <SelectItem value={EventTypes.BOOKS.toString()}>
+                      Book Club
+                    </SelectItem>
+                    <SelectItem value={EventTypes.WORKSHOP.toString()}>
+                      Workshop & Learning
+                    </SelectItem>
+                    <SelectItem value={EventTypes.MUSIC.toString()}>
+                      Music & Concert
+                    </SelectItem>
+                    <SelectItem value={EventTypes.HANGOUT.toString()}>
+                      Hang-out
+                    </SelectItem>
+                    <SelectItem value={EventTypes.OUTDOORS.toString()}>
+                      Outdoors & Nature
+                    </SelectItem>
+                    <SelectItem value={EventTypes.FOOD.toString()}>
+                      Food & Dining
+                    </SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>
