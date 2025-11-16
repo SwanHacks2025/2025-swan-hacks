@@ -13,19 +13,6 @@ export enum EventTypes {
     TUTORING = 'Tutoring'
 }
 
-export function getEventTypeFilename(category: EventTypes): string {
-  switch (category) {
-    case EventTypes.VOLUNTEER:
-      return "models/VolunteeringMarker.glb";
-    case EventTypes.SPORTS:
-      return "models/SportsMarker.glb";
-    case EventTypes.TUTORING:
-      return "models/TutoringMarker.glb";
-    default:
-        return "";
-  }
-}
-
 export class CommunityEvent {
     id: string
     name: string
@@ -36,13 +23,13 @@ export class CommunityEvent {
     long: number
     location: string
     date: Date
-    
+
     owner: string
     attendees: string[]
 
     imageUri: string
     modelUri: string
-    
+
     constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[], imageUri: string, modelUri: string) {
         this.id = id
         this.name = name
@@ -68,11 +55,7 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             lat: event.lat,
             long: event.long,
             location: event.location,
-            date: event.date,
-            owner: event.owner,
-            attendees: event.attendees,
-            imageUri: event.imageUri,
-            modelUri: event.modelUri
+            date: event.date
         };
     },
     fromFirestore(snapshot: QueryDocumentSnapshot): CommunityEvent {
