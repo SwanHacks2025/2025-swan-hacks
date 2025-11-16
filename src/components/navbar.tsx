@@ -25,6 +25,7 @@ import { ThemeToggle } from '@/components/theme-toggle';
 const menuItems = [
   { name: 'Map', href: '/map' },
   { name: 'Events', href: '/events' },
+  { name: 'Friends', href: '/friends' },
   { name: 'About', href: '/about' },
 ];
 
