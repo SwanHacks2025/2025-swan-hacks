@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { Equal, X } from "lucide-react";
-import { Button } from "@/components/liquid-glass-button";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import React from "react";
-import { cn } from "@/lib/utils";
-import Image from "next/image";
-import { useAuth } from "@/lib/firebaseAuth";
+import Link from 'next/link';
+import { Equal, X } from 'lucide-react';
+import { Button } from '@/components/liquid-glass-button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import React from 'react';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
+import { useAuth } from '@/lib/firebaseAuth';
 
 import {
   DropdownMenu,
@@ -16,13 +16,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const menuItems = [
-  { name: "Events", href: "#link" },
-  { name: "Clubs", href: "#link" },
-  { name: "About", href: "#link" },
+  { name: 'Events', href: '#link' },
+  { name: 'Clubs', href: '#link' },
+  { name: 'About', href: '#link' },
 ];
 
 export const Navbar = () => {
@@ -36,26 +36,25 @@ export const Navbar = () => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const displayName =
-    user?.displayName || user?.email?.split("@")[0] || "User";
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
-  const avatarUrl = user?.photoURL || "https://github.com/shadcn.png";
+  const avatarUrl = user?.photoURL || 'https://github.com/shadcn.png';
 
   return (
     <header>
       <nav
-        data-state={menuState && "active"}
+        data-state={menuState && 'active'}
         className="fixed left-0 w-full z-20 px-2"
       >
         <div
           className={cn(
-            "mx-auto max-w-6xl px-6 transition-all duration-300 lg:px-12",
+            'mx-auto max-w-6xl px-6 transition-all duration-300 lg:px-12',
             isScrolled &&
-              "bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg lg:px-5"
+              'bg-background/50 max-w-4xl rounded-2xl border backdrop-blur-lg mt-2 lg:px-5'
           )}
         >
           <div className="relative flex flex-wrap items-center justify-between gap-6 lg:gap-0 py-2">
@@ -79,7 +78,7 @@ export const Navbar = () => {
 
               <button
                 onClick={() => setMenuState(!menuState)}
-                aria-label={menuState ? "Close Menu" : "Open Menu"}
+                aria-label={menuState ? 'Close Menu' : 'Open Menu'}
                 className="relative z-20 -m-2.5 -mr-4 block cursor-pointer p-2.5 lg:hidden"
               >
                 <Equal className="in-data-[state=active]:rotate-180 in-data-[state=active]:scale-0 in-data-[state=active]:opacity-0 m-auto size-6 duration-200" />
@@ -129,41 +128,25 @@ export const Navbar = () => {
                 {/* Auth buttons */}
                 {!isSignedIn ? (
                   <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={loading}
-                    >
+                    <Button size="sm" variant="outline" disabled={loading}>
                       <Link href="/login">
-                      <span>{loading ? "Loading…" : "Login"}</span>
+                        <span>{loading ? 'Loading…' : 'Login'}</span>
                       </Link>
                     </Button>
 
-                    <Button 
-                      size="sm"
-                      disabled={loading}
-                    >
+                    <Button size="sm" disabled={loading}>
                       <Link href="/signup">
-                      <span>Sign Up</span>
+                        <span>Sign Up</span>
                       </Link>
                     </Button>
                     <ThemeToggle />
-                    <Button
-                      asChild
-                      size="sm"
-                      className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}
-                    >
-                      <Link href="#">
-                        <span>Get Started</span>
-                      </Link>
-                    </Button>
                   </>
                 ) : (
                   <>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button
-                          className="flex items-center gap-2 rounded-lg p-2 hover:bg-accent transition-colors"
+                          className="flex items-center gap-2 rounded-lg p-2 hover:bg-primary/10 transition-colors"
                           aria-label="Open user menu"
                         >
                           <Avatar>
@@ -179,10 +162,7 @@ export const Navbar = () => {
                           </span>
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-40"
-                      >
+                      <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuLabel className="text-xs">
                           {displayName}
                         </DropdownMenuLabel>
@@ -194,9 +174,7 @@ export const Navbar = () => {
                           onClick={logout}
                           className="cursor-pointer"
                         >
-                          <Link href="/">
-                          Sign out
-                          </Link>
+                          <Link href="/">Sign out</Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -206,9 +184,7 @@ export const Navbar = () => {
                       asChild
                       variant="outline"
                       size="sm"
-                      className={cn(
-                        isScrolled ? 'lg:inline-flex' : 'hidden'
-                      )}
+                      className={cn(isScrolled ? 'lg:inline-flex' : 'hidden')}
                     >
                       <button onClick={logout}>
                         <span>Log out</span>
