@@ -36,13 +36,33 @@ export async function createCircularImage(
 
       ctx.clearRect(0, 0, size, size);
 
+      // Calculate scaling to fit image within circle (object-fit: contain behavior)
+      const imgAspect = img.width / img.height;
+      const canvasAspect = size / size; // 1:1 for circle
+      
+      let drawWidth = size;
+      let drawHeight = size;
+      let drawX = 0;
+      let drawY = 0;
+      
+      if (imgAspect > canvasAspect) {
+        // Image is wider - fit to width
+        drawHeight = size / imgAspect;
+        drawY = (size - drawHeight) / 2;
+      } else {
+        // Image is taller - fit to height
+        drawWidth = size * imgAspect;
+        drawX = (size - drawWidth) / 2;
+      }
+
       ctx.save();
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
       ctx.closePath();
       ctx.clip();
 
-      ctx.drawImage(img, 0, 0, size, size);
+      // Draw image centered and scaled to fit
+      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
       ctx.restore();
 
       const imageData = ctx.getImageData(0, 0, size, size);
