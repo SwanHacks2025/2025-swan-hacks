@@ -1,7 +1,7 @@
 'use client';
 
 import '@/lib/cesium-setup';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Viewer, CesiumComponentRef } from 'resium';
 import { fetchCommunityEvents, CommunityEvent } from '@/lib/firebaseEvents';
 import {
@@ -13,16 +13,6 @@ import {
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import * as Cesium from 'cesium';
-import { Button } from '@/components/ui/button';
-import { Home, Filter } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuItem,
-} from '@/components/ui/dropdown-menu';
 
 export async function createCircularImage(
   url: string,
@@ -86,6 +76,14 @@ export async function createCircularImage(
 
 interface CesiumMapProps {
   onMarkerClick?: (markerId: string, markerData: any) => void;
+  dateRange?: { from?: Date; to?: Date };
+  selectedCategories?: string[];
+  onCategoriesChange?: (categories: string[]) => void;
+}
+
+export interface CesiumMapRef {
+  resetView: () => void;
+  getAllCategories: () => string[];
 }
 
 // Initial camera position
@@ -98,21 +96,27 @@ const INITIAL_POSITION = {
   roll: 0,
 };
 
-export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
-  const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
+const CesiumMap = forwardRef<CesiumMapRef, CesiumMapProps>(
+  ({ onMarkerClick, dateRange, selectedCategories = [], onCategoriesChange }, ref) => {
+    const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    const ION_TOKEN = process.env.NEXT_PUBLIC_CESIUM_ION_TOKEN;
 
-  const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingMessage, setLoadingMessage] = useState('Initializing map...');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [allCategories, setAllCategories] = useState<string[]>([]);
+    const viewerRef = useRef<CesiumComponentRef<CesiumViewer>>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingMessage, setLoadingMessage] = useState('Initializing map...');
+    const [allCategories, setAllCategories] = useState<string[]>([]);
 
   const markersLoadedRef = useRef(false);
   const clickHandlerRef = useRef<Cesium.ScreenSpaceEventHandler | null>(null);
   const postRenderListenerRef = useRef<(() => void) | null>(null);
   const viewerReadyRef = useRef(false);
+
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    resetView: handleResetView,
+    getAllCategories: () => allCategories,
+  }));
 
   useEffect(() => {
     if (ION_TOKEN) {
@@ -237,7 +241,10 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         new Set(events.map((e) => e.category).filter(Boolean))
       ) as string[];
       setAllCategories(categories);
-      setSelectedCategories(categories); // Initially show all
+      // Notify parent of all categories initially
+      if (onCategoriesChange) {
+        onCategoriesChange(categories);
+      }
 
       // build entities
       for (const evt of events) {
@@ -359,7 +366,7 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
     };
   }, []);
 
-  // Apply filter when selectedCategories changes
+  // Apply filters when selectedCategories or dateRange changes
   useEffect(() => {
     const viewer = viewerRef.current?.cesiumElement;
     if (!viewer || !viewerReadyRef.current) return;
@@ -367,12 +374,40 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
     viewer.entities.values.forEach((entity) => {
       const entityWithCategory = entity as any;
       const category = entityWithCategory._category;
+      const markerData = entityWithCategory._markerData;
 
-      entity.show =
+      // Category filter
+      const categoryMatch =
         selectedCategories.length === 0 ||
         selectedCategories.includes(category);
+
+      // Date range filter
+      let dateMatch = true;
+      if ((dateRange?.from || dateRange?.to) && markerData?.date) {
+        const eventDate = new Date(markerData.date);
+        const eventDateNormalized = new Date(eventDate.setHours(0, 0, 0, 0));
+
+        if (dateRange.from && dateRange.to) {
+          // Both from and to dates are set - check if event is within range
+          const fromNormalized = new Date(dateRange.from.setHours(0, 0, 0, 0));
+          const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
+          dateMatch =
+            eventDateNormalized.getTime() >= fromNormalized.getTime() &&
+            eventDateNormalized.getTime() <= toNormalized.getTime();
+        } else if (dateRange.from) {
+          // Only from date is set - show events on or after this date
+          const fromNormalized = new Date(dateRange.from.setHours(0, 0, 0, 0));
+          dateMatch = eventDateNormalized.getTime() >= fromNormalized.getTime();
+        } else if (dateRange.to) {
+          // Only to date is set - show events on or before this date
+          const toNormalized = new Date(dateRange.to.setHours(0, 0, 0, 0));
+          dateMatch = eventDateNormalized.getTime() <= toNormalized.getTime();
+        }
+      }
+
+      entity.show = categoryMatch && dateMatch;
     });
-  }, [selectedCategories]);
+  }, [selectedCategories, dateRange]);
 
   // Single click handler useEffect
   useEffect(() => {
@@ -426,22 +461,6 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
     });
   };
 
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category)
-        ? prev.filter((c) => c !== category)
-        : [...prev, category]
-    );
-  };
-
-  const toggleAllCategories = () => {
-    if (selectedCategories.length === allCategories.length) {
-      setSelectedCategories([]);
-    } else {
-      setSelectedCategories(allCategories);
-    }
-  };
-
   if (!ION_TOKEN) {
     return (
       <div style={{ padding: '20px' }}>
@@ -453,52 +472,6 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* Control Buttons */}
-      <div className="absolute top-4 left-4 z-50 flex gap-2">
-        <Button
-          onClick={handleResetView}
-          variant="outline"
-          size="sm"
-          className="bg-background/80 backdrop-blur-sm"
-        >
-          <Home className="h-4 w-4 mr-2" />
-          Reset View
-        </Button>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-background/80 backdrop-blur-sm"
-            >
-              <Filter className="h-4 w-4 mr-2" />
-              Filter ({selectedCategories.length}/{allCategories.length})
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuCheckboxItem
-              checked={selectedCategories.length === allCategories.length}
-              onCheckedChange={toggleAllCategories}
-            >
-              <span className="font-semibold">All Categories</span>
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuSeparator />
-            {allCategories.map((category) => (
-              <DropdownMenuCheckboxItem
-                key={category}
-                checked={selectedCategories.includes(category)}
-                onCheckedChange={() => toggleCategory(category)}
-              >
-                {category}
-              </DropdownMenuCheckboxItem>
-            ))}
-            {allCategories.length === 0 && (
-              <DropdownMenuItem disabled>No categories found</DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
 
       {/* Loading Screen Overlay */}
       {isLoading && (
@@ -585,4 +558,8 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
       />
     </div>
   );
-}
+});
+
+CesiumMap.displayName = 'CesiumMap';
+
+export default CesiumMap;
