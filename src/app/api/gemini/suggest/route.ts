@@ -48,13 +48,7 @@ export async function POST(request: NextRequest) {
 
     const userData = userSnap.data();
     const rsvpEventIds: string[] = userData?.rsvpEvents || [];
-
-    if (rsvpEventIds.length === 0) {
-      return NextResponse.json({ 
-        events: [],
-        message: 'No RSVPed events found. RSVP to some events to get suggestions!' 
-      });
-    }
+    const userInterests: string[] = userData?.interests || [];
 
     // Fetch all RSVPed events
     const rsvpEvents: any[] = [];
@@ -72,19 +66,6 @@ export async function POST(request: NextRequest) {
         console.error(`Error fetching event ${eventId}:`, error);
       }
     }
-
-    // Extract tags and descriptions from RSVPed events
-    const allTags = new Set<string>();
-    const descriptions: string[] = [];
-    
-    rsvpEvents.forEach((event) => {
-      if (event.tags && Array.isArray(event.tags)) {
-        event.tags.forEach((tag: string) => allTags.add(tag));
-      }
-      if (event.description) {
-        descriptions.push(event.description);
-      }
-    });
 
     // Fetch all available events
     let eventsSnapshot;
@@ -108,9 +89,47 @@ export async function POST(request: NextRequest) {
       ...doc.data(),
     })) as any[]; // Type as any[] since Firestore data structure is dynamic
 
-    // Filter out events user has already RSVPed to
+    // Extract events the user is hosting from all events
+    const hostedEvents = allEvents.filter((event) => event.owner === userId);
+    const hostedEventIds = hostedEvents.map((e) => e.id);
+
+    // Combine RSVPed and hosted events for preference analysis
+    const userEvents = [...rsvpEvents, ...hostedEvents];
+
+    // Check if user has any preferences (events or interests)
+    if (userEvents.length === 0 && userInterests.length === 0) {
+      return NextResponse.json({ 
+        events: [],
+        message: 'No RSVPed events, hosted events, or interests found. RSVP to events, host events, or add interests to your profile to get suggestions!' 
+      });
+    }
+
+    // Extract tags and descriptions from both RSVPed and hosted events
+    const allTags = new Set<string>();
+    const descriptions: string[] = [];
+    
+    userEvents.forEach((event) => {
+      if (event.tags && Array.isArray(event.tags)) {
+        event.tags.forEach((tag: string) => allTags.add(tag));
+      }
+      if (event.description) {
+        descriptions.push(event.description);
+      }
+    });
+
+    // Add user interests to the tags set (they're similar to tags)
+    userInterests.forEach((interest: string) => {
+      if (interest && interest.trim()) {
+        allTags.add(interest.trim());
+      }
+    });
+
+    // Filter out events user has already RSVPed to OR is hosting
     const availableEvents = allEvents.filter(
-      (event) => !rsvpEventIds.includes(event.id)
+      (event) => 
+        !rsvpEventIds.includes(event.id) && 
+        !hostedEventIds.includes(event.id) &&
+        event.owner !== userId // Double-check: also filter by owner field
     );
 
     if (availableEvents.length === 0) {
@@ -126,10 +145,10 @@ export async function POST(request: NextRequest) {
 
     const genAI = new GoogleGenAI({ apiKey });
 
-    const prompt = `Based on the following user preferences from events they've RSVPed to, suggest similar events from the available events list.
+    const prompt = `Based on the following user preferences from events they've RSVPed to, events they're hosting, and their personal interests, suggest similar events from the available events list.
 
-User's event tags: ${tagsList || 'None'}
-Sample event descriptions:
+User's interests and event tags: ${tagsList || 'None'}
+Sample event descriptions (from RSVPed and hosted events):
 ${descriptionsText || 'None'}
 
 Available events to choose from:
@@ -160,9 +179,10 @@ ${JSON.stringify(availableEvents.map(e => {
 }), null, 2)}
 
 Please analyze the user's preferences and suggest events that match their interests. Consider:
-1. Matching tags
+1. Matching tags and user interests (from their profile)
 2. Similar descriptions/categories
-3. Event relevance
+3. Event relevance to user's stated interests
+4. Alignment with events they've RSVPed to or hosted
 
 For each suggestion, provide a confidence score from 0.0 to 1.0, where:
 - 0.9-1.0: Very high confidence (excellent match)
