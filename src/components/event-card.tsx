@@ -89,7 +89,7 @@ export function EventCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 hover:bg-[#028174]/10"
+              className="h-7 w-7 hover:bg-[#028174]/10 cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(`/map?event=${event.id}`);
@@ -244,7 +244,7 @@ export function EventCard({
                   e.stopPropagation();
                   router.push(`/map?event=${event.id}`);
                 }}
-                className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
               >
                 <MapPin className="h-4 w-4 text-[#028174]" />
               </Button>
@@ -278,7 +278,7 @@ export function EventCard({
                   onRSVP?.(event.id, true);
                 }}
                 variant="outline"
-                className="w-full font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                className="w-full font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
               >
                 Remove RSVP
               </Button>
@@ -302,7 +302,7 @@ export function EventCard({
                   e.stopPropagation();
                   router.push(`/map?event=${event.id}`);
                 }}
-                className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
               >
                 <MapPin className="h-4 w-4 text-[#028174]" />
               </Button>

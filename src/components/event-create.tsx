@@ -230,7 +230,7 @@ export function EventDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="bg-[#028174] hover:bg-[#026d60] text-white font-medium">
+        <Button className="bg-[#028174] hover:bg-[#026d60] text-white font-medium cursor-pointer">
           <Plus className="h-4 w-4 mr-2" />
           Create Event
         </Button>

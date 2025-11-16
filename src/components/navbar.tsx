@@ -151,7 +151,7 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                       <Link
                         href={item.href}
                         className={cn(
-                          'px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold',
+                          'px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold cursor-pointer',
                           pathname === item.href
                             ? 'text-primary bg-primary/15 shadow-sm'
                             : 'text-foreground/80 hover:text-primary hover:bg-primary/8'
@@ -175,7 +175,7 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                         <Link
                           href={item.href}
                           className={cn(
-                            'block px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold',
+                            'block px-4 py-2 rounded-lg transition-all duration-200 text-base font-semibold cursor-pointer',
                             pathname === item.href
                               ? 'text-primary bg-primary/15 shadow-sm'
                               : 'text-foreground/80 hover:text-primary hover:bg-primary/8'

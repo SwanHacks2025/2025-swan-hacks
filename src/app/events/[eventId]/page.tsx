@@ -302,7 +302,7 @@ export default function EventPage({
                     <Button
                       variant="outline"
                       onClick={() => router.push(`/map?event=${communityEvent.id}`)}
-                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
                     >
                       <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
                       View on Map
@@ -329,7 +329,7 @@ export default function EventPage({
                     <Button
                       onClick={() => handleRSVP(true)}
                       variant="outline"
-                      className="w-full font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+                      className="w-full font-medium border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 cursor-pointer"
                     >
                       Remove RSVP
                     </Button>
@@ -338,14 +338,14 @@ export default function EventPage({
                   <div className="flex gap-2">
                     <Button
                       onClick={() => handleRSVP(false)}
-                      className="flex-1 bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold"
+                      className="flex-1 bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold cursor-pointer"
                     >
                       RSVP to Event
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => router.push(`/map?event=${communityEvent.id}`)}
-                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50"
+                      className="border-[#028174]/30 hover:bg-[#028174]/10 hover:border-[#028174]/50 cursor-pointer"
                     >
                       <MapPin className="h-4 w-4 mr-2 text-[#028174]" />
                       View on Map
@@ -359,7 +359,7 @@ export default function EventPage({
               <div className="mb-6">
                 <Button
                   onClick={() => toast.error('Please sign in to RSVP to events')}
-                  className="w-full bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold"
+                  className="w-full bg-[#ff4958] hover:bg-[#d63e4b] text-white font-semibold cursor-pointer"
                 >
                   Sign in to RSVP
                 </Button>
