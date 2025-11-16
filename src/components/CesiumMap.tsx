@@ -100,7 +100,7 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
       const viewer = viewerRef.current.cesiumElement;
       console.log('=== VIEWER FOUND ===', viewer);
 
-      viewer.cesiumWidget.creditContainer.style.display = "none";
+      (viewer.cesiumWidget.creditContainer as any).style.display = "none";
 
       try {
         setLoadingMessage('Setting camera position...');
