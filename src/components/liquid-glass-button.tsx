@@ -16,10 +16,10 @@ const buttonVariants = cva(
           "bg-destructive text-primary-foreground hover:bg-destructive/90",
         cool: "dark:inset-shadow-2xs dark:inset-shadow-white/10 bg-linear-to-t border border-b-2 border-zinc-950/40 from-primary to-primary/85 shadow-md shadow-primary/20 ring-1 ring-inset ring-white/25 transition-[filter] duration-200 hover:brightness-110 active:brightness-90 dark:border-x-0 text-primary-foreground dark:text-primary-foreground dark:border-t-0 dark:border-primary/50 dark:ring-white/5",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-primary/40 bg-background hover:bg-primary/10 hover:border-primary/60 dark:border-primary/30 dark:hover:bg-primary/10 dark:hover:border-primary/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -67,10 +67,10 @@ const liquidbuttonVariants = cva(
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-primary/40 bg-background hover:bg-primary/10 hover:border-primary/60 dark:border-primary/30 dark:hover:bg-primary/10 dark:hover:border-primary/50",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        ghost: "hover:bg-primary/10 hover:text-primary dark:hover:bg-primary/20",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
