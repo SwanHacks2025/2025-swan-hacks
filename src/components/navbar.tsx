@@ -231,16 +231,7 @@ export const Navbar = () => {
                       </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className={cn(isScrolled ? "lg:inline-flex" : "hidden")}
-                    >
-                      <button onClick={logout}>
-                        <span>Log out</span>
-                      </button>
-                    </Button>
+                    
                   </>
                 )}
               </div>
