@@ -127,8 +127,8 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
                   width={48}
                   height={48}
                 />
-                <p className="font-semibold text-xl tracking-tighter text-foreground">
-                  Gather Point
+                <p className="font-semibold text-xl tracking-tighter text-foreground [font-family:var(--font-fugaz)]">
+                  Gather <span className="text-primary">P<span className="text-[#ff4958]">o</span>int</span>
                 </p>
               </Link>
 

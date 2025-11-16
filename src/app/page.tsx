@@ -78,11 +78,11 @@ export default function Home() {
 
               <motion.h1
                 variants={fadeIn}
-                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground leading-[1.1]"
+                className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-foreground leading-[1.1] [font-family:var(--font-fugaz)]"
               >
                 Gather
                 <br />
-                <span className="text-primary">Point</span>
+                <span className="text-primary">P<span className="text-[#ff4958]">o</span>int</span>
               </motion.h1>
 
               <motion.p
@@ -177,7 +177,7 @@ export default function Home() {
                     alt="Gather Point Logo"
                     width={500}
                     height={500}
-                    className="w-96 h-96 relative z-10"
+                    className="w-150 h-150 relative z-10"
                     priority
                   />
                 </motion.div>

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import {Geist, Geist_Mono} from 'next/font/google';
+import {Roboto} from 'next/font/google';
+import {Fugaz_One} from "next/font/google";
 import { ThemeProvider } from '@/context';
 import './globals.css';
 import { AuthProvider } from '@/lib/firebaseAuth';
@@ -15,6 +17,18 @@ const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 });
+
+const roboto = Roboto({
+    weight: ['300', '400', '700'],
+    subsets: ['latin'],
+    variable: '--font-roboto',
+})
+
+const fugaz = Fugaz_One({
+    weight: '400',
+    subsets: ['latin'],
+    variable: '--font-fugaz',
+})
 
 export const metadata: Metadata = {
   title: 'Gather Point',
@@ -34,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${roboto.className} ${fugaz.variable}`}
       >
         <ThemeProvider>
           <AuthProvider>
