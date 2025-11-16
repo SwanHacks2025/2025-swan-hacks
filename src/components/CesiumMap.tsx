@@ -100,6 +100,8 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
       const viewer = viewerRef.current.cesiumElement;
       console.log('=== VIEWER FOUND ===', viewer);
 
+      viewer.cesiumWidget.creditContainer.style.display = "none";
+
       try {
         setLoadingMessage('Setting camera position...');
         setLoadingProgress(20);
@@ -116,6 +118,17 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         console.log('Terrain loaded');
 
         viewer.scene.globe.depthTestAgainstTerrain = true;
+
+        viewer.scene.globe.enableLighting = false; // Optional: better label visibility
+
+          // Use CartoDB labels - these have proper CORS headers
+          viewer.imageryLayers.addImageryProvider(
+              new Cesium.UrlTemplateImageryProvider({
+                  url: 'https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_only_labels/{z}/{x}/{y}.png',
+                  subdomains: ['a', 'b', 'c', 'd'],
+                  credit: 'Map tiles by CartoDB, under CC BY 3.0'
+              })
+          );
 
         if (GOOGLE_KEY) {
           setLoadingMessage('Loading Google 3D Tiles...');
@@ -394,6 +407,11 @@ export default function CesiumMap({ onMarkerClick }: CesiumMapProps) {
         baseLayerPicker={false}
         timeline={false}
         animation={false}
+        geocoder={false}
+        homeButton={false}
+        navigationHelpButton={false}
+        sceneModePicker={false}
+        infoBox={false}
       />
     </div>
   );
