@@ -57,8 +57,6 @@ export default function EventPage() {
   useEffect(() => {
     if (!user || loading) return
 
-    setEventsLoading(true)
-
     fetchCommunityEventsByUserId(user.uid)
       .then((events: CommunityEvent[]) => {
         return events.filter((e) => {
@@ -73,7 +71,7 @@ export default function EventPage() {
           // --- Filter 2: Category ---
           const categoryFilters = selectedFilters["Category"]
           if (categoryFilters && categoryFilters.size > 0) {
-            if (!Array.from(categoryFilters).includes(e.category as EventTypes)) {
+            if (!categoryFilters.has(e.category.toString())) {
               return false
             }
           }
