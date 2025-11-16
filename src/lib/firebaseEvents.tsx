@@ -53,14 +53,16 @@ export class CommunityEvent {
     long: number
     location: string
     date: Date
+    endTime?: Date
 
     owner: string
     attendees: string[]
+    tags: string[]
 
     imageUri: string
     modelUri: string
 
-    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[], imageUri: string, modelUri: string) {
+    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[], imageUri: string, modelUri: string, tags: string[] = [], endTime?: Date) {
         this.id = id
         this.name = name
         this.description = description
@@ -69,8 +71,10 @@ export class CommunityEvent {
         this.long = long
         this.location = location
         this.date = date
+        this.endTime = endTime
         this.owner = owner
         this.attendees = attendees
+        this.tags = tags
         this.imageUri = imageUri
         this.modelUri = modelUri
     }
@@ -86,8 +90,10 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             long: event.long,
             location: event.location,
             date: event.date,
+            endTime: event.endTime || null,
             owner: event.owner,
             attendees: event.attendees,
+            tags: event.tags || [],
             imageUri: event.imageUri,
             modelUri: event.modelUri
         };
@@ -104,9 +110,11 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             data.location,
             data.date ? data.date.toDate() : new Date(data.date),
             data.owner,
-            data.attendees,
+            data.attendees || [],
             data.imageUri,
-            data.modelUri
+            data.modelUri,
+            data.tags || [],
+            data.endTime ? data.endTime.toDate() : undefined
         );
     }
 };

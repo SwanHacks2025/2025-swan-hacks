@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,12 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, X } from "lucide-react";
-import { SidebarMenuButton } from "./ui/sidebar";
 import { Textarea } from "./ui/textarea";
 import {
   Select,
@@ -28,11 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateTimePicker } from "./date-time-picker";
-import { CommunityEvent, communityEventConverter, EventTypes, getEventTypeFilename } from "@/lib/firebaseEvents";
+import { CommunityEvent, communityEventConverter, EventTypes } from "@/lib/firebaseEvents";
 import { auth, db } from "@/lib/firebaseClient";
 import { onAuthStateChanged, User } from "@firebase/auth";
-import { collection, doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
-import { redirect, RedirectType } from "next/navigation";
+import { doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
+import { GeminiEventResult } from "@/app/api/gemini/search/route";
 
 type NominatimResult = {
   display_name: string;
@@ -40,7 +36,17 @@ type NominatimResult = {
   lon: string;
 };
 
-export function EventDialog() {
+interface AIEventCreateDialogProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  eventData: GeminiEventResult;
+}
+
+export function AIEventCreateDialog({
+  isOpen,
+  onOpenChange,
+  eventData,
+}: AIEventCreateDialogProps) {
   const [address, setAddress] = useState("");
   const [debouncedAddress, setDebouncedAddress] = useState("");
   const [addressResults, setAddressResults] = useState<NominatimResult[]>([]);
@@ -50,10 +56,56 @@ export function EventDialog() {
   const [addressError, setAddressError] = useState("");
 
   const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
-  const [tags, setTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState("");
+
+  // Map AI category to EventTypes
+  const mapCategoryToEventType = (category?: string): EventTypes => {
+    if (!category) return EventTypes.VOLUNTEER;
+    const catLower = category.toLowerCase();
+    if (catLower.includes("volunteer")) return EventTypes.VOLUNTEER;
+    if (catLower.includes("sport")) return EventTypes.SPORTS;
+    if (catLower.includes("tutor")) return EventTypes.TUTORING;
+    return EventTypes.VOLUNTEER;
+  };
+
+  // Parse date from AI result
+  const parseAIDate = (dateStr?: string, timeStr?: string): Date => {
+    if (dateStr && timeStr) {
+      const dateTime = new Date(`${dateStr}T${timeStr}`);
+      if (!isNaN(dateTime.getTime())) return dateTime;
+    }
+    if (dateStr) {
+      const date = new Date(dateStr);
+      if (!isNaN(date.getTime())) return date;
+    }
+    // Default to tomorrow if no date provided
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  };
+
+  // Initialize form with AI data when dialog opens
+  useEffect(() => {
+    if (isOpen && eventData) {
+      setAddress(eventData.location || "");
+      // Try to geocode the location immediately
+      if (eventData.location) {
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            eventData.location
+          )}`
+        )
+          .then((res) => res.json())
+          .then((data: NominatimResult[]) => {
+            if (data && data.length > 0) {
+              setLat(data[0].lat);
+              setLon(data[0].lon);
+            }
+          })
+          .catch(console.error);
+      }
+    }
+  }, [isOpen, eventData]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -92,35 +144,20 @@ export function EventDialog() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      if (!firebaseUser) {
-        setLoading(false);
-        return;
-      }
-
-      const userRef = doc(db, "Users", firebaseUser.uid);
-      const snap = await getDoc(userRef);
-
-      if (snap.exists()) {
-        const data = snap.data() as { Username?: string };
-        setUsername(data.Username || firebaseUser.displayName || "");
-      } else {
-        setUsername(firebaseUser.displayName || "");
-      }
-
       setLoading(false);
     });
 
     return () => unsub();
   }, []);
-    
-  // -----------------------
-  // SUBMIT HANDLER
-  // -----------------------
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    if (!user || loading) return
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setAddressError("");
+
+    if (!user) {
+      setAddressError("You must be logged in to create an event.");
+      return;
+    }
 
     // If no lat/lon, re-fetch to validate
     if (!lat || !lon) {
@@ -144,19 +181,16 @@ export function EventDialog() {
 
     const name = form.get("name")!.toString();
     const description = form.get("description")!.toString();
-    const category = form.get("category") as EventTypes;
-    const model = getEventTypeFilename(category);
+    const category = (form.get("category") as EventTypes) || mapCategoryToEventType(eventData.category);
     const locationStr = form.get("address")!.toString();
     const dateStr = form.get("date")!.toString();
     const startStr = form.get("startTime")!.toString();
     const endStr = form.get("endTime")!.toString();
-    const image = form.get("image")!.toString();
 
     const startDate = new Date(`${dateStr}T${startStr}`);
-    const endTime = endStr ? new Date(`${dateStr}T${endStr}`) : undefined;
+    const endDate = new Date(`${dateStr}T${endStr}`);
 
-    // Hardcode temporarily (replace with auth)
-    const owner = user?.uid;
+    const owner = user.uid;
     const attendees: string[] = [];
 
     const event = new CommunityEvent(
@@ -169,49 +203,48 @@ export function EventDialog() {
       locationStr,
       startDate,
       owner,
-      attendees,
-      image,
-      model,
-      tags,
-      endTime
+      attendees
     );
-
-    console.log("EVENT OBJECT:", event);
 
     const db = getFirestore();
     await setDoc(doc(db, "Events", event.id).withConverter(communityEventConverter), event);
-    
-    window.location.reload();
+
+    // Close dialog and reset form
+    onOpenChange(false);
+    // Reset form state
+    setAddress("");
+    setLat("");
+    setLon("");
   };
-  
+
   if (loading) {
-    return (<p>Loading...</p>);
+    return null;
   }
 
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <SidebarMenuButton>
-          <Plus />
-          <span>Create new event</span>
-        </SidebarMenuButton>
-      </DialogTrigger>
+  const initialDate = parseAIDate(eventData.date, eventData.time);
+  const initialCategory = mapCategoryToEventType(eventData.category);
 
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Create new event</DialogTitle>
+            <DialogTitle>Create Event from AI Search</DialogTitle>
             <DialogDescription>
-              Schedule a new event in your community.
+              Review and edit the event details before creating it.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-5">
-
             {/* Event Name */}
             <div className="grid gap-2">
               <Label>Name</Label>
-              <Input name="name" placeholder="Cleanup in the Park" required />
+              <Input
+                name="name"
+                placeholder="Cleanup in the Park"
+                defaultValue={eventData.name}
+                required
+              />
             </div>
 
             {/* Description */}
@@ -220,6 +253,7 @@ export function EventDialog() {
               <Textarea
                 name="description"
                 placeholder="A brief description of your event..."
+                defaultValue={eventData.description}
                 required
               />
             </div>
@@ -227,14 +261,16 @@ export function EventDialog() {
             {/* Category */}
             <div className="grid gap-2">
               <Label>Category</Label>
-              <Select name="category">
+              <Select name="category" defaultValue={initialCategory.toString()}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     <SelectLabel>Category</SelectLabel>
-                    <SelectItem value={EventTypes.VOLUNTEER.toString()}>Volunteering</SelectItem>
+                    <SelectItem value={EventTypes.VOLUNTEER.toString()}>
+                      Volunteering
+                    </SelectItem>
                     <SelectItem value={EventTypes.SPORTS.toString()}>Sports</SelectItem>
                     <SelectItem value={EventTypes.TUTORING.toString()}>Tutoring</SelectItem>
                   </SelectGroup>
@@ -248,7 +284,7 @@ export function EventDialog() {
               <div className="relative">
                 <Input
                   name="address"
-                  placeholder="2520 Osborn Dr, Ames, IA   (Geocoding by OpenStreetMaps)"
+                  placeholder="123 Main St"
                   autoComplete="off"
                   value={address}
                   onChange={(e) => {
@@ -288,65 +324,41 @@ export function EventDialog() {
             </div>
 
             {/* Date + Time Picker */}
-            <DateTimePicker />
-            
-            {/* Tags */}
             <div className="grid gap-2">
-              <Label>Tags</Label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add a tag..."
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      if (newTag.trim() && !tags.includes(newTag.trim())) {
-                        setTags([...tags, newTag.trim()]);
-                        setNewTag("");
-                      }
-                    }
-                  }}
+              <Label>Date & Time</Label>
+              <DateTimePicker />
+              {/* Note: DateTimePicker uses internal state, so default values from AI may not be visible
+                  Users can manually set the date/time or it will use the AI-provided values if available */}
+              {eventData.date && (
+                <input
+                  type="hidden"
+                  name="date"
+                  defaultValue={eventData.date}
                 />
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (newTag.trim() && !tags.includes(newTag.trim())) {
-                      setTags([...tags, newTag.trim()]);
-                      setNewTag("");
-                    }
-                  }}
-                >
-                  Add
-                </Button>
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {tags.map((tag, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-sm"
-                    >
-                      <span>{tag}</span>
-                      <button
-                        type="button"
-                        onClick={() => setTags(tags.filter((t) => t !== tag))}
-                        className="hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
               )}
-            </div>
-            
-            <div className="grid gap-5">
-              <Label>Image URL</Label>
-              <Input name="image" placeholder="Image..." required />
+              {eventData.time && (
+                <input
+                  type="hidden"
+                  name="startTime"
+                  defaultValue={eventData.time}
+                />
+              )}
+              {!eventData.time && (
+                <input
+                  type="hidden"
+                  name="startTime"
+                  defaultValue="10:00"
+                />
+              )}
+              <input
+                type="hidden"
+                name="endTime"
+                defaultValue={eventData.time ? eventData.time : "11:00"}
+              />
             </div>
           </div>
-          <DialogFooter className="mt-2">
+
+          <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
@@ -357,3 +369,4 @@ export function EventDialog() {
     </Dialog>
   );
 }
+
