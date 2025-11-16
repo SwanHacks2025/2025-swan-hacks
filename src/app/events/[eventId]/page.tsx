@@ -21,6 +21,7 @@ import { Calendar, MapPin, User, Users, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/lib/firebaseAuth';
 import { SpotlightBackground } from '@/components/spotlight-background';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function EventPage({
   params,
@@ -398,13 +399,15 @@ export default function EventPage({
               communityEvent.attendees.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 md:gap-2">
                   {communityEvent.attendees.map((attendeeId) => (
-                    <Badge
-                      key={attendeeId}
-                      variant="outline"
-                      className="text-xs"
-                    >
-                      {attendeeNames.get(attendeeId) || attendeeId}
-                    </Badge>
+                    <Link key={attendeeId} href={`/profile/${attendeeId}`}>
+                      <Badge
+                        key={attendeeId}
+                        variant="outline"
+                        className="text-xs"
+                      >
+                        {attendeeNames.get(attendeeId) || attendeeId}
+                      </Badge>
+                    </Link>
                   ))}
                 </div>
               ) : (
