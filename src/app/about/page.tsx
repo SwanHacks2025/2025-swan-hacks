@@ -91,12 +91,7 @@ const faqs = [
     question: 'Where is the map data from?',
     answer:
       "Our map data is provided by Google Maps, with tiling done by Cesium. Geocoding and address lookup is done by OpenStreetMaps.",
-  },
-  {
-    question: 'How do I contact the Gather Point team?',
-    answer:
-      "You can reach out to us through the contact page or email us directly. We're always happy to hear feedback, answer questions, or help with any issues you might encounter.",
-  },
+  }
 ];
 
 export default function AboutPage() {

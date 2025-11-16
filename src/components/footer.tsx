@@ -117,30 +117,6 @@ export function Footer() {
                   About
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm cursor-pointer"
-                >
-                  Contact
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/privacy"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm cursor-pointer"
-                >
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/terms"
-                  className="text-muted-foreground hover:text-primary transition-colors text-sm cursor-pointer"
-                >
-                  Terms of Service
-                </Link>
-              </li>
             </ul>
           </div>
         </div>
