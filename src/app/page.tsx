@@ -65,6 +65,78 @@ export default function Home() {
         {/* Hero Section */}
         <section className="container mx-auto min-h-[90vh] px-6 py-24 sm:px-8 lg:px-16 flex items-center">
           <div className="grid lg:grid-cols-2 gap-12 items-center w-full">
+            {/* Mobile Icon - Above Content */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7, delay: 0.2 }}
+              className="relative flex lg:hidden items-center justify-center mb-8 mt-10"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/30 to-secondary/20 rounded-full blur-3xl scale-110" />
+
+                <motion.div
+                  animate={{
+                    rotate: 360,
+                  }}
+                  transition={{
+                    duration: 30,
+                    repeat: Infinity,
+                    ease: 'linear',
+                  }}
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background:
+                      'conic-gradient(from 0deg, transparent 0%, rgba(10, 182, 139, 0.1) 50%, transparent 100%)',
+                    filter: 'blur(2px)',
+                  }}
+                />
+
+                <motion.div
+                  animate={{
+                    y: [0, -20, 0],
+                  }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: 'easeInOut',
+                  }}
+                  className="relative"
+                >
+                  <Image
+                    src="/GatherPointLogo.svg"
+                    alt="Gather Point Logo"
+                    width={400}
+                    height={400}
+                    className="w-48 h-48 sm:w-64 sm:h-64 relative z-10"
+                    priority
+                  />
+                </motion.div>
+
+                {/* Floating accent dots */}
+                {[...Array(4)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    animate={{
+                      y: [0, -15, 0],
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 3 + i * 0.5,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      delay: i * 0.4,
+                    }}
+                    className="absolute w-2 h-2 rounded-full bg-primary/40"
+                    style={{
+                      left: `${20 + i * 20}%`,
+                      top: `${10 + i * 15}%`,
+                    }}
+                  />
+                ))}
+              </div>
+            </motion.div>
+
             {/* Left Column - Content */}
             <motion.div
               initial="initial"
@@ -85,7 +157,9 @@ export default function Home() {
               >
                 Gather
                 <br />
-                <span className="text-primary">P<span className="text-[#ff4958]">o</span>int</span>
+                <span className="text-primary">
+                  P<span className="text-[#ff4958]">o</span>int
+                </span>
               </motion.h1>
 
               <motion.p
@@ -100,7 +174,11 @@ export default function Home() {
                 variants={fadeIn}
                 className="flex flex-col sm:flex-row gap-4"
               >
-                <Button size="lg" className="text-base group" onClick={openSignupModal}>
+                <Button
+                  size="lg"
+                  className="text-base group"
+                  onClick={openSignupModal}
+                >
                   <span className="gap-2 flex items-center">
                     Get Started
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
@@ -273,7 +351,11 @@ export default function Home() {
                 life together.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button size="lg" className="text-base group" onClick={openSignupModal}>
+                <Button
+                  size="lg"
+                  className="text-base group"
+                  onClick={openSignupModal}
+                >
                   <span className="gap-2 flex items-center">
                     Start Your Journey
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
