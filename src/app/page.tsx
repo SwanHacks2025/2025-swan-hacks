@@ -97,7 +97,7 @@ export default function Home() {
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <Button asChild size="lg" className="text-base group">
-                  <Link href="#" className="gap-2">
+                  <Link href="/login" className="gap-2">
                     Get Started
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </Link>
@@ -108,7 +108,7 @@ export default function Home() {
                   size="lg"
                   className="text-base"
                 >
-                  <Link href="#">Explore Communities</Link>
+                  <Link href="/map">Explore Communities</Link>
                 </Button>
               </motion.div>
 
@@ -270,7 +270,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild size="lg" className="text-base group">
-                  <Link href="#" className="gap-2">
+                  <Link href="/login" className="gap-2">
                     Start Your Journey
                     <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </Link>
@@ -281,7 +281,7 @@ export default function Home() {
                   size="lg"
                   className="text-base"
                 >
-                  <Link href="#">Learn More</Link>
+                  <Link href="/about">Learn More</Link>
                 </Button>
               </div>
             </div>
