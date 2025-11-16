@@ -32,36 +32,37 @@ import Image from 'next/image';
 // EDITABLE CREATORS DATA
 const creators = [
   {
-    name: 'John Doe',
-    role: 'Co-Founder & CEO',
-    bio: 'Passionate about building communities and bringing people together through technology.',
-    avatar: 'https://github.com/shadcn.png',
+    name: ' Cai Chen',
+    avatar: 'https://avatars.githubusercontent.com/u/145074700',
     socials: {
-      github: 'https://github.com',
-      linkedin: 'https://linkedin.com',
-      twitter: 'https://twitter.com',
+      github: 'https://github.com/achen2304',
+      linkedin: 'https://www.linkedin.com/in/achen2304/',
     },
   },
   {
-    name: 'Jane Smith',
-    role: 'Co-Founder & CTO',
-    bio: 'Full-stack developer with a love for creating meaningful digital experiences.',
-    avatar: 'https://github.com/shadcn.png',
+    name: 'Mieszko Muskala',
+    avatar: 'https://avatars.githubusercontent.com/u/92417405',
     socials: {
-      github: 'https://github.com',
-      linkedin: 'https://linkedin.com',
+      github: 'https://github.com/MMoose16',
+      linkedin: 'https://www.linkedin.com/in/mmuskala/',
     },
   },
   {
-    name: 'Alex Johnson',
-    role: 'Design Lead',
-    bio: 'Designer focused on creating intuitive and beautiful user experiences.',
-    avatar: 'https://github.com/shadcn.png',
+    name: 'Sean Krueger',
+    avatar: 'https://avatars.githubusercontent.com/u/71362472',
     socials: {
-      linkedin: 'https://linkedin.com',
-      twitter: 'https://twitter.com',
+      github: 'https://github.com/seakrueger',
+      linkedin: 'https://www.linkedin.com/in/seankru/',
     },
   },
+  {
+    name: 'Josh Arceo ',
+    avatar: 'https://avatars.githubusercontent.com/u/17519123',
+    socials: {
+      github: 'https://github.com/JoshuaArceo',
+      linkedin: 'https://www.linkedin.com/in/joshuaarceo/',
+    },
+  }
 ];
 
 // EDITABLE FAQ DATA
@@ -79,17 +80,17 @@ const faqs = [
   {
     question: 'Is Gather Point free to use?',
     answer:
-      'Yes! Gather Point is completely free to use. You can discover events, join communities, and create your own gatherings without any cost.',
+      'Yes! Gather Point is completely free to use. You can discover events, find communities, and create your own gatherings without any cost.',
   },
   {
     question: 'How do I find events near me?',
     answer:
-      "Navigate to the map page where you can see all events and communities in your area. You can filter by category, distance, and date to find exactly what you're looking for.",
+      "Navigate to the map page where you can see all events and communities in your area. You can filter by event category, name, and date to find exactly what you're looking for.",
   },
   {
-    question: 'Can I join multiple communities?',
+    question: 'Where is the map data from?',
     answer:
-      "Absolutely! There's no limit to how many communities you can join. Explore different interests and connect with various groups of people in your area.",
+      "Our map data is provided by Google Maps, with tiling done by Cesium. Geocoding and address lookup is done by OpenStreetMaps.",
   },
   {
     question: 'How do I contact the Gather Point team?',
@@ -209,16 +210,16 @@ export default function AboutPage() {
             <p>
               Gather Point was born from a simple observation: despite living in
               vibrant cities surrounded by thousands of people, many of us feel
-              disconnected. We spend hours scrolling through social media, yet
-              struggle to find genuine community in real life.
+              disconnected in our modern era. We spend hours scrolling through
+              social media, yet struggle to find genuine community in real life.
             </p>
             <p>
               Our founders experienced this firsthand. After moving to a new
               city, they found it surprisingly difficult to meet people who
               shared their interests. The few platforms that existed were either
               too focused on dating or felt corporate and impersonal. They
-              wanted something different—a space designed purely for building
-              community and creating shared experiences.
+              wanted a space designed purely for building community and creating
+              shared experiences.
             </p>
             <p>
               So they built Gather Point. A platform where anyone can discover
@@ -229,12 +230,10 @@ export default function AboutPage() {
               easy to find your people and do what you love together.
             </p>
             <p>
-              Today, we're proud to help thousands of people rediscover the joy
+              Today, we're proud to help people rediscover the joy
               of in-person connection. Every event created, every community
               formed, and every friendship made on our platform reminds us why
-              we started this journey. We're not just building technology—we're
-              rebuilding the social fabric of our communities, one gathering at
-              a time.
+              we started this journey. 
             </p>
           </motion.div>
         </div>
@@ -255,13 +254,12 @@ export default function AboutPage() {
             <h2 className="text-3xl md:text-4xl font-bold mb-4 text-foreground">
               Meet the Creators
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              The passionate team behind Gather Point, dedicated to bringing
-              communities together.
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              The passionate team behind Gather Point, dedicated to bringing communities together.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {creators.map((creator, index) => (
               <motion.div
                 key={index}
