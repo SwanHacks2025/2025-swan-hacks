@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -337,9 +338,19 @@ export default function ProfilePage() {
     <div className="min-h-screen pt-28 pb-12 px-6">
       <div className="max-w-2xl mx-auto">
         {/* Floating Island Container */}
-        <div className="bg-background/70 backdrop-blur-xl rounded-2xl border border-border shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-background/70 backdrop-blur-xl rounded-2xl border border-border shadow-lg"
+        >
           {/* Header with Profile Picture */}
-          <div className="p-8 border-b border-border/50">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            className="p-8 border-b border-border/50"
+          >
             <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 
             {/* Profile Picture Section */}
@@ -375,10 +386,15 @@ export default function ProfilePage() {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Content Sections */}
-          <div className="p-8 space-y-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="p-8 space-y-6"
+          >
             {/* Message Display */}
             {message && (
               <div className="bg-primary/10 border border-primary/20 rounded-lg px-4 py-3">
@@ -387,7 +403,12 @@ export default function ProfilePage() {
             )}
 
             {/* Username Section */}
-            <div className="space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="space-y-3"
+            >
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-muted-foreground">
                   Username
@@ -445,10 +466,15 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
 
             {/* Bio Section */}
-            <div className="space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.4 }}
+              className="space-y-3"
+            >
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-muted-foreground">
                   Bio
@@ -509,10 +535,15 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-            </div>
+            </motion.div>
 
             {/* Privacy Section */}
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.5 }}
+              className="space-y-4"
+            >
               <label className="text-sm font-semibold text-muted-foreground">
                 Account Privacy
               </label>
@@ -549,10 +580,15 @@ export default function ProfilePage() {
                   </Button>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Interests Section */}
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.6 }}
+              className="space-y-4"
+            >
               <label className="text-sm font-semibold text-muted-foreground">
                 Interests
               </label>
@@ -589,10 +625,15 @@ export default function ProfilePage() {
                   Add
                 </Button>
               </div>
-            </div>
+            </motion.div>
 
             {/* Previous Events Section */}
-            <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: 0.7 }}
+              className="space-y-4"
+            >
               <label className="text-sm font-semibold text-muted-foreground">
                 Previous Events
               </label>
@@ -642,9 +683,9 @@ export default function ProfilePage() {
                   </p>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );

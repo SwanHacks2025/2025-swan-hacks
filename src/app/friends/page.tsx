@@ -332,7 +332,10 @@ export default function FriendsPage() {
       >
         <div className="max-w-7xl mx-auto w-full flex-1 flex gap-3 md:gap-6 min-h-0">
           {/* Left Sidebar - Friends/Requests/Search - Floating Island */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
             className={`${
               selectedChatId ? 'hidden md:flex' : 'flex'
             } w-full md:w-96 bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg flex-col relative z-20`}
@@ -405,10 +408,13 @@ export default function FriendsPage() {
                 />
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Right Side - Chat Interface - Floating Island */}
-          <div
+          <motion.div
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
             className={`${
               selectedChatId ? 'flex' : 'hidden md:flex'
             } flex-1 bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg flex-col relative z-20`}
@@ -425,7 +431,7 @@ export default function FriendsPage() {
               currentUserId={user.uid}
               onBack={() => setSelectedChatId(null)}
             />
-          </div>
+          </motion.div>
         </div>
       </main>
 

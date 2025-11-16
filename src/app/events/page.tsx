@@ -6,6 +6,7 @@ import { db, auth } from '@/lib/firebaseClient';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 import {
   CommunityEvent,
@@ -467,8 +468,17 @@ export default function EventPage() {
               <div className="flex flex-col gap-8 py-6 px-4 lg:px-6">
                 {/* My Events Section */}
                 {myEvents.length > 0 && (
-                  <div>
-                    <div className="mb-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.1 }}
+                    >
                       <h2 className="text-2xl font-bold text-foreground mb-1">
                         My Events
                       </h2>
@@ -477,25 +487,40 @@ export default function EventPage() {
                         {myEvents.length === 1 ? 'event' : 'events'} you're
                         attending or organizing
                       </p>
-                    </div>
+                    </motion.div>
                     <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-                      {myEvents.map((e) => (
-                        <EventCard
+                      {myEvents.map((e, index) => (
+                        <motion.div
                           key={e.id}
-                          event={e}
-                          user={user}
-                          onRSVP={handleRSVP}
-                          compact
-                        />
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.4, delay: index * 0.05 }}
+                        >
+                          <EventCard
+                            event={e}
+                            user={user}
+                            onRSVP={handleRSVP}
+                            compact
+                          />
+                        </motion.div>
                       ))}
                     </div>
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* Suggested Events Section */}
                 {user && (
-                  <div>
-                    <div className="mb-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <motion.div
+                      className="mb-6"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                    >
                       <h2 className="text-2xl font-bold text-foreground mb-1">
                         Suggested for You
                       </h2>
@@ -513,26 +538,42 @@ export default function EventPage() {
                           RSVP to some events to get personalized suggestions!
                         </p>
                       )}
-                    </div>
+                    </motion.div>
                     {filteredSuggestedEvents.length > 0 && (
                       <div className="grid grid-cols-1 gap-3 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-                        {filteredSuggestedEvents.map((e) => (
-                          <EventCard
+                        {filteredSuggestedEvents.map((e, index) => (
+                          <motion.div
                             key={e.id}
-                            event={e}
-                            user={user}
-                            onRSVP={handleRSVP}
-                            compact
-                          />
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.3 + index * 0.05 }}
+                          >
+                            <EventCard
+                              event={e}
+                              user={user}
+                              onRSVP={handleRSVP}
+                              compact
+                            />
+                          </motion.div>
                         ))}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 )}
 
                 {/* Discover Events Section */}
-                <div className="mb-12">
-                  <div className="mb-6">
+                <motion.div
+                  className="mb-12"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                >
+                  <motion.div
+                    className="mb-6"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.5 }}
+                  >
                     <h2 className="text-2xl font-bold text-foreground mb-1">
                       {myEvents.length > 0 ? 'Discover Events' : 'All Events'}
                     </h2>
@@ -540,18 +581,24 @@ export default function EventPage() {
                       {otherEvents.length}{' '}
                       {otherEvents.length === 1 ? 'event' : 'events'} available
                     </p>
-                  </div>
+                  </motion.div>
                   <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @4xl/main:grid-cols-4">
-                    {otherEvents.map((e) => (
-                      <EventCard
+                    {otherEvents.map((e, index) => (
+                      <motion.div
                         key={e.id}
-                        event={e}
-                        user={user}
-                        onRSVP={handleRSVP}
-                      />
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.5 + index * 0.05 }}
+                      >
+                        <EventCard
+                          event={e}
+                          user={user}
+                          onRSVP={handleRSVP}
+                        />
+                      </motion.div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               </div>
             )}
           </div>

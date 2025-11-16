@@ -199,9 +199,14 @@ export default function EventPage({
   return (
     <SpotlightBackground>
       <main className="min-h-screen pt-20 md:pt-28 pb-8 px-4 md:px-6">
-        <div className="max-w-4xl mx-auto w-full flex-1 flex gap-3 md:gap-6 min-h-0 overflow-y-auto">
+        <div className="max-w-4xl mx-auto w-full">
           {/* Single Floating Island Container */}
-          <div className="bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg p-4 md:p-6 relative z-20 w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-background/70 backdrop-blur-xl rounded-xl md:rounded-2xl border border-border shadow-lg p-4 md:p-6 relative z-20 w-full"
+          >
             {/* Header with Image and Title */}
             <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-4 md:mb-6">
               {/* Image */}
@@ -373,7 +378,7 @@ export default function EventPage({
                 </p>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </main>
     </SpotlightBackground>

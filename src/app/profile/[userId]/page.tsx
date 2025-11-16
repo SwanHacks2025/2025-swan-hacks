@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { motion } from 'framer-motion';
 
 export default function ViewProfilePage() {
   const params = useParams();
@@ -318,19 +319,35 @@ export default function ViewProfilePage() {
     <div className="min-h-screen pt-28 pb-12 px-6">
       <div className="max-w-2xl mx-auto">
         {/* Back Button */}
-        <Button
-          variant="ghost"
-          onClick={() => router.back()}
-          className="mb-4 w-fit gap-2 cursor-pointer"
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </Button>
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="mb-4 w-fit gap-2 cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+        </motion.div>
 
         {/* Floating Island Container */}
-        <div className="bg-background/70 backdrop-blur-xl rounded-2xl border border-border shadow-lg">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="bg-background/70 backdrop-blur-xl rounded-2xl border border-border shadow-lg"
+        >
           {/* Header with Profile Picture */}
-          <div className="p-8 border-b border-border/50">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="p-8 border-b border-border/50"
+          >
             <div className="flex flex-col items-center gap-4">
               <Avatar className="h-32 w-32 ring-4 ring-primary/10">
                 {profileUser.photoURL ? (
@@ -415,24 +432,39 @@ export default function ViewProfilePage() {
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Content Sections */}
-          <div className="p-8 space-y-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.3 }}
+            className="p-8 space-y-6"
+          >
             {/* Privacy Notice */}
             {profileUser.isPrivate && !profileUser.canViewProfile && (
-              <div className="bg-muted/30 rounded-lg px-6 py-8 text-center">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 }}
+                className="bg-muted/30 rounded-lg px-6 py-8 text-center"
+              >
                 <Lock className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                 <p className="text-muted-foreground">
                   This is a private account. Only friends can view their profile
                   information.
                 </p>
-              </div>
+              </motion.div>
             )}
 
             {/* Bio Section */}
             {profileUser.canViewProfile && profileUser.bio && (
-              <div className="space-y-3">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.4 }}
+                className="space-y-3"
+              >
                 <label className="text-sm font-semibold text-muted-foreground">
                   Bio
                 </label>
@@ -441,14 +473,19 @@ export default function ViewProfilePage() {
                     {profileUser.bio}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* Interests Section */}
             {profileUser.canViewProfile &&
               profileUser.interests &&
               profileUser.interests.length > 0 && (
-                <div className="space-y-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.5 }}
+                  className="space-y-4"
+                >
                   <label className="text-sm font-semibold text-muted-foreground">
                     Interests
                   </label>
@@ -464,7 +501,7 @@ export default function ViewProfilePage() {
                       )
                     )}
                   </div>
-                </div>
+                </motion.div>
               )}
 
             {/* Empty State for No Bio/Interests/Events */}
@@ -473,15 +510,20 @@ export default function ViewProfilePage() {
               (!profileUser.interests || profileUser.interests.length === 0) &&
               previousEvents.length === 0 &&
               !loadingEvents && (
-                <div className="bg-muted/30 rounded-lg px-6 py-8 text-center mt-3">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.4 }}
+                  className="bg-muted/30 rounded-lg px-6 py-8 text-center mt-3"
+                >
                   <p className="text-muted-foreground">
                     {profileUser.username} hasn&apos;t added any profile
                     information yet.
                   </p>
-                </div>
+                </motion.div>
               )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Remove Friend Confirmation Dialog */}
