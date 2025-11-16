@@ -24,7 +24,10 @@ export class CommunityEvent {
     location: string
     date: Date
     
-    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date) {
+    owner: string
+    attendees: string[]
+    
+    constructor(id: string, name: string, description: string, category: EventTypes, lat: number, long: number, location: string, date: Date, owner: string, attendees: string[]) {
         this.id = id
         this.name = name
         this.description = description
@@ -33,6 +36,8 @@ export class CommunityEvent {
         this.long = long
         this.location = location
         this.date = date
+        this.owner = owner
+        this.attendees = attendees
     }
 }
 
@@ -54,11 +59,13 @@ export const communityEventConverter: FirestoreDataConverter<CommunityEvent> = {
             snapshot.id,
             data.name,
             data.description,
-            EventTypes[data.category.toUpperCase() as keyof typeof EventTypes],
+            data.category ? EventTypes[data.category.toUpperCase() as keyof typeof EventTypes] : EventTypes.NO_CATEGORY,
             data.lat,
             data.long,
             data.location,
-            data.date ? data.date.toDate() : new Date(data.date)
+            data.date ? data.date.toDate() : new Date(data.date),
+            data.owner,
+            data.attendees
         );
     }
 };
@@ -82,5 +89,5 @@ export async function fetchCommunityEventsByUserId(id: string): Promise<Communit
 
     const snapshot = await getDocs(eventsRef);
 
-    return snapshot.docs.map(doc => doc.data());
+    return snapshot.docs.map(doc => doc.data()).filter(data => data.owner == id || (data.attendees && data.attendees.includes(id)));
 }

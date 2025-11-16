@@ -3,9 +3,10 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { CommunityEvent } from "@/lib/firebaseEvents";
 
 export function EventCard({
-    event
+    event, running
 }: {
-    event: CommunityEvent
+    event: CommunityEvent,
+    running: boolean
 }) {
     return (
       <div>
@@ -18,9 +19,14 @@ export function EventCard({
                 {event.name}
             </CardTitle>
             <CardAction>
-              <Badge variant="outline">
+            {running ? 
+              <Badge variant="outline" className="bg-chart-2">
+                Organizing
+              </Badge> : 
+              <Badge variant="outline" className="bg-chart-4">
                 Attending
-              </Badge>
+              </Badge> 
+            }
             </CardAction>
           </CardHeader>
           <CardContent>
@@ -28,7 +34,7 @@ export function EventCard({
           </CardContent>
           <CardFooter className="flex-col items-start gap-1.5 text-sm">
             <div className="line-clamp-1 flex gap-2 font-medium">
-              {event.date.toDateString()}
+              {event.date ? event.date.toDateString() : null}
             </div>
             <div className="text-muted-foreground">
               {event.location}

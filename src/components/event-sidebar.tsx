@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react";
 import * as React from "react"
 
 import {
@@ -11,128 +12,83 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "#",
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-    },
-    {
-      title: "Analytics",
-      url: "#",
-    },
-    {
-      title: "Projects",
-      url: "#",
-    },
-    {
-      title: "Team",
-      url: "#",
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-    },
-    {
-      title: "Get Help",
-      url: "#",
-    },
-    {
-      title: "Search",
-      url: "#",
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-    },
-    {
-      name: "Reports",
-      url: "#",
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-    },
-  ],
-}
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth, db } from "@/lib/firebaseClient";
+import { doc, getDoc } from "firebase/firestore";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 export function EventSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [user, setUser] = useState<User | null>(null);
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (!firebaseUser) {
+        setLoading(false);
+        return;
+      }
+
+      const userRef = doc(db, "Users", firebaseUser.uid);
+      const snap = await getDoc(userRef);
+
+      if (snap.exists()) {
+        const data = snap.data() as { Username?: string };
+        setUsername(data.Username || firebaseUser.displayName || "");
+      } else {
+        setUsername(firebaseUser.displayName || "");
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsub();
+  }, [])
+  
+  if (loading) {
+    return (
+      <Sidebar collapsible="offcanvas" {...props}>
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <span className="text-base font-semibold">Loading...</span>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+      </Sidebar>
+    )
+  }
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
-            >
-              <a href="#">
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
-            </SidebarMenuButton>
+            <div className="flex items-center justify-center">
+              <Avatar className="size-20">
+                {user?.photoURL && (
+                  <AvatarImage src={user.photoURL} />
+                )}
+                <AvatarFallback>
+                  {/* {avatarFallback} */}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <div className="text-center font-bold">{user?.displayName}</div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <span className="text-base font-semibold">Email:</span>
+            <br />
+            <span className="text-base font-normal">{user?.email}</span>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
       </SidebarFooter>
