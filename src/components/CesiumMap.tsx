@@ -19,6 +19,7 @@ import {
 } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import * as Cesium from 'cesium';
+import { MapLoadingScreen } from './MapLoadingScreen';
 
 export async function createCircularImage(
   url: string,
@@ -531,76 +532,7 @@ const CesiumMap = forwardRef<CesiumMapRef, CesiumMapProps>(
 
     return (
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-        {/* Loading Screen Overlay */}
-        {isLoading && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: '#028174',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              transition: 'opacity 0.5s ease-out',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                color: '#ffe3b3',
-                marginBottom: '2rem',
-              }}
-            >
-              Loading Map
-            </div>
-
-            <div
-              style={{
-                width: '300px',
-                height: '8px',
-                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '4px',
-                overflow: 'hidden',
-                marginBottom: '1rem',
-              }}
-            >
-              <div
-                style={{
-                  width: `${loadingProgress}%`,
-                  height: '100%',
-                  backgroundColor: '#ff4958',
-                  transition: 'width 0.3s ease-out',
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                color: 'rgba(255, 255, 255, 0.7)',
-                fontSize: '0.9rem',
-              }}
-            >
-              {loadingMessage}
-            </div>
-
-            <div
-              style={{
-                color: '#ffe3b3',
-                fontSize: '1.5rem',
-                marginTop: '1rem',
-                fontWeight: 'bold',
-              }}
-            >
-              {loadingProgress}%
-            </div>
-          </div>
-        )}
+        <MapLoadingScreen isLoading={isLoading} />
 
         <Viewer
           ref={viewerRef}

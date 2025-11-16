@@ -104,7 +104,7 @@ export const Navbar = ({ onLoginClick, onSignupClick }: NavbarProps) => {
     <header>
       <nav
         data-state={menuState && 'active'}
-        className="fixed left-0 w-full z-20 px-2 mt-2"
+        className="fixed left-0 w-full z-1000 px-2 mt-2"
       >
         <div
           className={cn(
